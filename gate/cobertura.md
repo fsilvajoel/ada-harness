@@ -1,22 +1,36 @@
 # Gate: cobertura
 
 ## Objetivo
-Garantir que o código da feature foi exercitado pelos testes e que os limites de cobertura do pacote valem.
+Garantir que o código de produção da feature foi exercitado por inteiro pelos testes da feature. A suíte
+completa de cada pacote não entra aqui: ela é do gate de conclusão (`pnpm verify`). Assim, testes vermelhos
+de outras features ainda em esboço (o teste vem antes do código) não travam a feature em andamento.
 
 ## Comando
 `pnpm gate coverage <feature>` (`scripts/gates.mts`). Em cada pacote que contém testes listados em `tests` do
-[estado](../workflow/feature-artefatos/estado.md), roda a suíte do vitest com cobertura; os limites
-(`thresholds`) são os do `vitest.config` do pacote. Resultado em `gates.coverage`.
+[estado](../workflow/feature-artefatos/estado.md):
+- roda só esses testes no vitest, com cobertura ligada;
+- mede só os arquivos de produção da feature: cada teste sem o `.test` (`x.test.ts` mede `x.ts`), um
+  `--coverage.include` por arquivo, com os caracteres de glob escapados;
+- anula o `coverage.exclude` do `vitest.config` (`--coverage.exclude=` vazio), para que um arquivo da feature
+  excluído ali não suma da medição;
+- exige 100% de linhas, ramos, funções e statements em cada arquivo (limites passados na linha de comando e
+  conferidos arquivo a arquivo no `coverage-summary.json`).
+
+Resultado em `gates.coverage`.
 
 ## Critério de sucesso (PASS)
-Vitest sai com código 0 (limites atendidos), todos os testes passam, nenhum é pulado, todo teste da feature
-rodou e o total de linhas medido é maior que zero.
+Vitest sai com código 0, todos os testes da feature passam, nenhum é pulado, todo teste da feature aparece no
+relatório e cada arquivo de produção da feature aparece no relatório de cobertura com linhas medidas e 100%
+nas quatro métricas.
 
 ## Critério de falha (FAIL)
+- arquivo de produção da feature inexistente, ou teste sem o padrão `.test.<ext>`;
 - nenhum teste executado; teste falhando; teste pulado ou `todo` (**pular é FAIL**);
-- teste da feature fora do relatório;
-- `coverage-summary.json` ausente ou cobertura vazia: **0/0 é falha**, nunca sucesso;
-- limite de cobertura não atendido.
+- teste da feature fora do relatório do vitest;
+- `coverage-summary.json` ausente;
+- arquivo da feature fora do relatório de cobertura (excluído ou não carregado): é FAIL, nunca 0/0 PASS;
+- cobertura vazia: **0/0 é falha**, nunca sucesso;
+- qualquer métrica abaixo de 100% num arquivo da feature, ou vitest saindo com código diferente de 0.
 
 ## Evidência esperada
 `gates.coverage` no estado e a linha do gate na tabela "Gates" de `revisao.md`

@@ -14,5 +14,5 @@ Formato de cada arquivo: [_modelo.md](_modelo.md).
 | [done-checks](done-checks.md) | a feature está pronta? | `pnpm verify` |
 | [testes-revisados](testes-revisados.md) | os testes revisados continuam com o mesmo sha? | `pnpm gate tests-reviewed <feature> [--sign]` |
 | [expect-red](expect-red.md) | os testes falharam contra o esboço antes da implementação? | `pnpm gate expect-red <feature>` |
-| [cobertura](cobertura.md) | a cobertura passa nos limites e não é vazia? | `pnpm gate coverage <feature>` |
+| [cobertura](cobertura.md) | os arquivos da feature têm 100% de cobertura e a medição não é vazia? | `pnpm gate coverage <feature>` |
 | [auditoria](auditoria.md) | a auditoria aprovou? | manual (`reviewer`) |
