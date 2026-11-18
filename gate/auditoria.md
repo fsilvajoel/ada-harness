@@ -5,7 +5,7 @@ Garantir que um papel independente confirmou que os testes cobrem os critérios 
 cumpre o plano.
 
 ## Executor
-**Manual**: subagente `reviewer` na revisão final. Não há script; o orquestrador só avança com o veredito
+**Manual**: papel `reviewer` na revisão final. Não há script; o orquestrador só avança com o veredito
 registrado.
 
 ## Critério de sucesso (PASS)

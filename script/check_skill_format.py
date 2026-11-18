@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Gate skill-format: toda skill é `.claude/skills/<nome>/SKILL.md` com frontmatter válido.
+"""Gate skill-format: toda skill é `<skill_dir>/<nome>/SKILL.md` com frontmatter válido.
 
-A fonte única das skills é `.claude/skills/` na raiz do repositório (nas
-mensagens abaixo, `skill/` abrevia esse diretório).
+A pasta de skills é do projeto alvo (`skill_dir` no `harness.project.yaml`) e
+vem como argumento (nas mensagens abaixo, `skill/` abrevia esse diretório).
 
 Regras (detalhes em `gate/skill-format.md`):
 
@@ -24,7 +24,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 
 # Skills de terceiros, copiadas sem alteração de conteúdo (proveniência em
-# .claude/skills/README.md). Só delas não se exigem as seções do modelo.
+# README.md da pasta de skills). Só delas não se exigem as seções do modelo.
 THIRD_PARTY: frozenset[str] = frozenset(
     {
         "accessibility",
@@ -52,8 +52,6 @@ REQUIRED_SECTIONS: tuple[str, ...] = (
 
 ALLOWED_FILES: frozenset[str] = frozenset({"README.md", "_modelo.md", "LICENSE-tech-leads-club-agent-skills"})
 
-# Diretório padrão: `.claude/skills/` na raiz do repositório.
-DEFAULT_SKILL_ROOT = ROOT.parent / ".claude" / "skills"
 
 
 def parse_frontmatter(text: str) -> dict[str, str] | None:
@@ -152,7 +150,10 @@ def check_skills(skill_root: Path) -> list[str]:
 
 
 def main() -> int:
-    skill_root = Path(sys.argv[1]).resolve() if len(sys.argv) > 1 else DEFAULT_SKILL_ROOT
+    if len(sys.argv) != 2:
+        print("uso: check_skill_format.py <pasta de skills do projeto>")
+        return 2
+    skill_root = Path(sys.argv[1]).resolve()
     problems = check_skills(skill_root)
     if problems:
         print("Gate skill-format falhou.")

@@ -1,0 +1,37 @@
+# Molde da configuração que o projeto alvo mantém na raiz dele, como `harness.project.yaml`.
+# Caminhos relativos à raiz do projeto. Troque os <...>.
+harness: <caminho até o harness>
+skill_dir: <pasta de skills do projeto>
+
+# Idioma (policy/idioma.md).
+language:
+  docs: pt-BR
+  code: en
+  commits: en
+
+# Papel -> definição no adaptador da ferramenta (adapter/). O orquestrador é qualquer agente de IA.
+roles:
+  orchestrator: {agent: null}
+  planner: {agent: <definição do papel>}
+  test-writer: {agent: <definição do papel>}
+  reviewer: {agent: <definição do papel>}
+  implementer: {agent: <definição do papel>}
+
+# Comandos de verificação. Workflows, skills e gates citam a chave (commands.test etc.), nunca o comando.
+commands:
+  test: <rodar um arquivo de teste>
+  coverage: <cobertura>
+  typecheck: <checagem de tipos>
+  lint: <lint>
+  format: <formatação>
+  verify: <verificação completa>
+
+# Gate portable: textos do projeto que não podem aparecer dentro do harness.
+portable:
+  forbidden:
+    - <nome do projeto>
+    - <caminho absoluto da máquina>
+
+checks:
+  - portable
+  - skill-format

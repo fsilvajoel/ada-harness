@@ -1,8 +1,8 @@
 # estado.json de uma feature
 
 Fica em `docs/plano/<feature>/estado.json` e diz em que ponto a feature está. Quem grava: o **orquestrador**
-(sessão principal do Claude Code, ao fechar cada etapa) e o **script de gates** (`pnpm gate <nome> <feature>`,
-nos campos `gates` e `testShas`). Subagente não edita este arquivo.
+(ao fechar cada etapa) e o **script de gates** (`pnpm gate <nome> <feature>`,
+nos campos `gates` e `testShas`). Os outros papéis não editam este arquivo.
 
 ```json
 {
@@ -36,6 +36,6 @@ nos campos `gates` e `testShas`). Subagente não edita este arquivo.
 ## Status das etapas
 | Status | Significado | O que fazer |
 |---|---|---|
-| `needs_input` | o subagente ou o plano pediu decisão humana | responder e retomar a etapa |
-| `failed` | o reviewer reprovou ou o subagente não entregou | refazer a etapa com a lista de achados |
+| `needs_input` | o papel ou o plano pediu decisão humana | responder e retomar a etapa |
+| `failed` | o reviewer reprovou ou o papel não entregou | refazer a etapa com a lista de achados |
 | `error` | gate FAIL (ex.: teste passou antes da hora, sha mudou, cobertura abaixo do limite, 0/0 ou teste pulado) | ler a mensagem do gate; não é sucesso |

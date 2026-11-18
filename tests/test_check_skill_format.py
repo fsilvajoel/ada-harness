@@ -70,9 +70,10 @@ def test_skill_de_terceiro_dispensa_secoes(tmp_path: Path) -> None:
     assert check_skills(tmp_path) == []
 
 
-def test_skills_reais_do_harness_passam() -> None:
+def test_pasta_valida_pela_linha_de_comando_passa(tmp_path: Path) -> None:
+    escrever_skill(tmp_path, "minha", frontmatter("minha") + SECOES)
     proc = subprocess.run(
-        [sys.executable, str(ROOT / "script" / "check_skill_format.py")],
+        [sys.executable, str(ROOT / "script" / "check_skill_format.py"), str(tmp_path)],
         cwd=str(ROOT),
         text=True,
         capture_output=True,

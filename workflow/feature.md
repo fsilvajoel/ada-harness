@@ -5,15 +5,16 @@ Entregar uma feature numa sequência controlada em que **os testes revisados dec
 só começa depois deles.
 
 ## Quem conduz
-O **orquestrador** é a sessão principal do Claude Code. Ele segue esta lista, chama um subagente por etapa
-(`.claude/agents/`), roda os gates e grava o estado. Os subagentes não chamam uns aos outros.
+O **orquestrador** é qualquer agente de IA. Ele segue esta lista, chama um [papel](../agent/README.md) por etapa
+(como, depende do [adaptador](../adapter/README.md)), roda os gates e grava o estado. Os papéis não chamam uns
+aos outros.
 
-| Subagente | Etapas |
+| Papel | Etapas |
 |---|---|
-| [planner](../../.claude/agents/planner.md) | plan |
-| [test-writer](../../.claude/agents/test-writer.md) | tests |
-| [reviewer](../../.claude/agents/reviewer.md) | revisão dos testes, revisão final (somente leitura) |
-| [implementer](../../.claude/agents/implementer.md) | implement |
+| `planner` | plan |
+| `test-writer` | tests |
+| `reviewer` | revisão dos testes, revisão final (somente leitura) |
+| `implementer` | implement |
 
 ## Pasta da feature
 Tudo da feature fica em `docs/plano/<feature>/` (moldes em [feature-artefatos/](feature-artefatos/README.md)):
@@ -31,12 +32,12 @@ Marque cada item na ordem. Gate FAIL ou SKIP bloqueia o item seguinte; a mensage
 - [ ] Criar `estado.json` com `feature`, `tests` (caminhos dos testes previstos) e `stages.plan = done`.
 
 ### 2. tests
-- [ ] Chamar **test-writer** (skill [escrever-teste](../../.claude/skills/escrever-teste/SKILL.md)).
+- [ ] Chamar **test-writer** (skill `escrever-teste`).
 - [ ] Gravar em `estado.json` os `scenarios` (`C<n>` → teste) e ajustar `tests` se a lista mudou.
 - [ ] `pnpm gate expect-red <feature>` → PASS (gate [expect-red](../gate/expect-red.md)).
 
 ### 3. revisão dos testes
-- [ ] Chamar **reviewer** (skill [revisar-teste](../../.claude/skills/revisar-teste/SKILL.md)); gravar a saída em
+- [ ] Chamar **reviewer** (skill `revisar-teste`); gravar a saída em
       `revisao.md`.
 - [ ] Reprovado: voltar à etapa 2 com a lista do reviewer.
 - [ ] Aprovado: `pnpm gate tests-reviewed <feature> --sign` (grava `testShas`).
@@ -44,7 +45,7 @@ Marque cada item na ordem. Gate FAIL ou SKIP bloqueia o item seguinte; a mensage
 ### 4. implement
 - [ ] Bloqueio: só começa com `gates.expect-red` e `testShas` gravados no estado.
 - [ ] Tirar o esboço da exclusão de cobertura.
-- [ ] Chamar **implementer** (skill [editar-arquivo](../../.claude/skills/editar-arquivo/SKILL.md)).
+- [ ] Chamar **implementer** (skill `editar-arquivo`).
 - [ ] `pnpm gate tests-reviewed <feature>` → PASS (gate [testes-revisados](../gate/testes-revisados.md)).
       Teste alterado depois da revisão volta para a etapa 3.
 - [ ] `pnpm gate coverage <feature>` → PASS (gate [cobertura](../gate/cobertura.md)).

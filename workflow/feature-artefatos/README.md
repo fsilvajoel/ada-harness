@@ -11,4 +11,4 @@ Copie o molde, troque os `<...>` e apague o que não se aplica.
 | todas | `estado.json` ([estado.md](estado.md)) | orquestrador e `pnpm gate` |
 
 Ordem: `plan → tests → revisão dos testes → implement → revisão final → fechamento`. A implementação só começa com
-os testes prontos e revisados (skill [revisar-teste](../../../.claude/skills/revisar-teste/SKILL.md)).
+os testes prontos e revisados (skill `revisar-teste`).

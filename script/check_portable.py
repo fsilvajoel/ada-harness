@@ -2,7 +2,8 @@
 """Gate portable: o harness não pode citar o projeto alvo nem caminhos locais.
 
 A lista de textos proibidos fica em `portable.forbidden` no
-`harness.project.yaml`, que é o único arquivo autorizado a contê-los.
+`harness.project.yaml` do projeto alvo, que mora fora do harness.
+Uso: `check_portable.py <caminho do harness.project.yaml>`.
 """
 
 from __future__ import annotations
@@ -14,24 +15,23 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from script.project_config import CONFIG_NAME, get_str_list, load_config
+from script.project_config import get_str_list, parse_config_text
 
 SKIPPED_PARTS = {".git", ".venv", "__pycache__", ".pytest_cache", ".harness"}
 
 
-def forbidden_tokens(project_root: Path) -> list[str]:
+def forbidden_tokens(config_path: Path) -> list[str]:
     """Lê `portable.forbidden` do yaml do projeto."""
-    return get_str_list(load_config(project_root), "portable", "forbidden")
+    return get_str_list(parse_config_text(config_path.read_text(encoding="utf-8")), "portable", "forbidden")
 
 
-def find_forbidden(project_root: Path, tokens: list[str]) -> list[tuple[str, str]]:
-    """Devolve pares (caminho relativo, texto proibido) encontrados."""
+def find_forbidden(harness_root: Path, tokens: list[str]) -> list[tuple[str, str]]:
+    """Devolve pares (caminho relativo, texto proibido) encontrados no harness."""
     matches: list[tuple[str, str]] = []
-    config_path = project_root / CONFIG_NAME
-    for path in sorted(project_root.rglob("*")):
-        if not path.is_file() or path == config_path:
+    for path in sorted(harness_root.rglob("*")):
+        if not path.is_file():
             continue
-        if any(part in SKIPPED_PARTS for part in path.relative_to(project_root).parts):
+        if any(part in SKIPPED_PARTS for part in path.relative_to(harness_root).parts):
             continue
         try:
             content = path.read_text(encoding="utf-8")
@@ -39,18 +39,21 @@ def find_forbidden(project_root: Path, tokens: list[str]) -> list[tuple[str, str
             continue
         for token in tokens:
             if token in content:
-                matches.append((str(path.relative_to(project_root)), token))
+                matches.append((str(path.relative_to(harness_root)), token))
     return matches
 
 
 def main() -> int:
-    project_root = Path(sys.argv[1]).resolve() if len(sys.argv) > 1 else ROOT
-    tokens = forbidden_tokens(project_root)
+    if len(sys.argv) != 2:
+        print("uso: check_portable.py <caminho do harness.project.yaml do projeto>")
+        return 2
+    config_path = Path(sys.argv[1]).resolve()
+    tokens = forbidden_tokens(config_path)
     if not tokens:
         print("Gate portable falhou.")
-        print(f"- {CONFIG_NAME} não declara portable.forbidden")
+        print(f"- {config_path.name} não declara portable.forbidden")
         return 1
-    matches = find_forbidden(project_root, tokens)
+    matches = find_forbidden(ROOT, tokens)
     if matches:
         print("Gate portable falhou.")
         for path, token in matches:

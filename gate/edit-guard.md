@@ -4,24 +4,22 @@
 Impedir, antes de a tool rodar, ações que pulam os hooks do git, tocam segredos ou escrevem fora do repositório.
 
 ## Executor
-Hook `PreToolUse` do Claude Code em `.claude/settings.json`, que roda `scripts/guard-hook.mts` em toda chamada de
-Bash, Read, Edit, Write, MultiEdit, NotebookEdit, Grep e Glob. Bloqueio = código de saída 2, motivo no stderr.
-Evento inválido também bloqueia (falha fechada).
+Trava do adaptador de cada ferramenta, rodada antes de toda ação de shell, leitura ou escrita. Bloqueio com motivo;
+evento inválido também bloqueia (falha fechada). Hoje existe no [adaptador do Claude Code](../adapter/claude-code.md).
 
 ## Critério de sucesso (PASS)
 A chamada não cai em nenhuma regra abaixo e segue normalmente.
 
 ## Critério de falha (FAIL)
-- Bash com `--no-verify` (inclusive abreviado), `git commit -n` (também agrupado, como `-an`), troca de
+- comando de shell com `--no-verify` (inclusive abreviado), `git commit -n` (também agrupado, como `-an`), troca de
   `core.hooksPath` ou `LEFTHOOK=`;
 - qualquer tool ou comando que cite `.env` ou variante (`.env.local`, `.env*`); `.env.example` é permitido;
-- Edit/Write/MultiEdit/NotebookEdit com caminho fora do repositório (symlinks e `..` resolvidos), exceto a
-  memória do Claude (`~/.claude/projects/<projeto>/memory/**`) e o temp do Claude (`/tmp/claude-<uid>/**`);
-  `.env` continua bloqueado também nessas áreas.
+- escrita com caminho fora do repositório (symlinks e `..` resolvidos), exceto as áreas de memória e temp que o
+  adaptador liberar; `.env` continua bloqueado também nessas áreas.
 
 ## Limites
-Não analisa para onde um comando Bash escreve (redirecionamento, `cp`, `mv`); escopo do plano continua sendo
+Não analisa para onde um comando de shell escreve (redirecionamento, `cp`, `mv`); escopo do plano continua sendo
 conferido na revisão. Regra de fundo: [policy/editing.md](../policy/editing.md).
 
 ## Evidência esperada
-Mensagem `guard-hook: <motivo>` devolvida ao agente; testes em `scripts/guard-hook.test.mts`.
+Motivo do bloqueio devolvido ao agente; testes da trava no adaptador.
