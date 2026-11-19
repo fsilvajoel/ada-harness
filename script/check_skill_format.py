@@ -36,7 +36,9 @@ THIRD_PARTY: frozenset[str] = frozenset(
         "react-best-practices",
         "security-best-practices",
         "security-threat-model",
+        "shadcn",
         "tactical-ddd",
+        "tailwind-css",
         "the-judge",
     }
 )

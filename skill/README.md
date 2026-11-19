@@ -32,6 +32,9 @@ Ajustes locais sobre a cópia: a pasta `web-accessibility` virou `accessibility`
 | gh-fix-ci | diagnóstico de CI quebrado |
 | harness-eval | avaliação do AGENTS.md e das travas |
 | react-best-practices, accessibility | frontend Next.js e acessibilidade do portal |
+| shadcn, tailwind-css | telas do portal: componentes shadcn/ui (CLI + MCP) e estilo Tailwind v4 |
+
+`shadcn`: [shadcn-ui/ui](https://github.com/shadcn-ui/ui) `skills/shadcn`, commit `f50887a` (2026-11-19), licença MIT (`shadcn/LICENSE.md`). `tailwind-css`: [PaulRBerg/agent-skills](https://github.com/PaulRBerg/agent-skills) `skills/tailwind-css`, commit `c9e5a34` (2026-11-19), licença MIT (`tailwind-css/LICENSE.md`). Ambas em modo cópia, conteúdo revisado (o único script, `shadcn/scripts/showcase-coverage.mjs`, só lê arquivos locais). Ajuste local: `description` do tailwind-css em uma linha (o gate não lê YAML dobrado). A `shadcn` roda `npx shadcn@latest info --json` ao carregar: só funciona com cwd em `apps/web`.
 
 ## Regras locais
 As regras do projeto que prevalecem sobre o texto das skills (ex.: idioma da revisão, o que nunca publicar sem ok,

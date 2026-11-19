@@ -25,3 +25,7 @@ Definir escopo, domínio das entradas, critérios de aceite, cenários e contrat
 - **Arquivos de produção.** O plano lista os arquivos de produção da feature e marca os de domínio; a lista vira
   `sources` e `domainSources` no [estado](../workflow/feature-artefatos/estado.md).
 - **Pendência para a feature.** Qualquer pendência, inclusive no domínio, para o workflow até ser respondida.
+- **Tela é tipo de cartão.** Cartão que cria ou altera página, layout ou composição visual do frontend é marcado
+  como **tela** no plano, e só ele recebe `shadcn` e `tailwind-css` em `skills:`
+  ([tabela](../workflow/feature-artefatos/cartao.md#tabela-padrão-tipo-de-cartão--extras)). O plano de uma tela
+  cita os componentes shadcn previstos (nomes do registro) e os estados a cobrir (vazio, carregando, erro).

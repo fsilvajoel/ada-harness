@@ -41,6 +41,13 @@ test-writer → `escrever-teste`, `revisar-teste`; implementer → `editar-arqui
 | implement, componente | `react-best-practices` (índice) |
 | implement, formulário | `react-best-practices` e `react-best-practices#rerender-derived-state-no-effect` |
 | implement, lista/detalhe/tabela | `react-best-practices` e `react-best-practices#rendering-conditional-render` |
+| implement, **tela** (página ou layout de UI do frontend) | `shadcn`, `tailwind-css`, `react-best-practices` e `accessibility` (índices) |
+| test-author, **tela** | `accessibility` |
+
+**Tela** = cartão que cria ou altera página, layout ou composição visual do app web. É o único tipo que leva `shadcn`
+e `tailwind-css`; lib, regra de negócio, API e cartão de frontend sem UI visível não os recebem. Na tela, a `shadcn`
+exige o diretório atual em `apps/web` (roda `shadcn info` ao carregar) e o MCP `shadcn` do projeto está disponível.
+Componentes vêm do registro do shadcn (`shadcn add`), nunca copiados à mão; o estilo segue os tokens de `globals.css`.
 
 ## Quem lê
 - Trabalhador **sem ferramentas** (api-chat, cli-agent): o executor inclui os recursos no pedido
