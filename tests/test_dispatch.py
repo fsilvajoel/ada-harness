@@ -104,3 +104,30 @@ def test_codigo_de_saida_do_executor_passa(project: Path) -> None:
     config = project / "harness.project.yaml"
     config.write_text(config.read_text(encoding="utf-8").replace("refiner reviewer", "reviewer"), encoding="utf-8")
     assert dispatch(project, "--role", "refiner").returncode == 2  # papel fora de workers.cli.roles
+
+
+def test_system_padrao_do_adaptador_api_chat_chega_ao_executor(project: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    from script import dispatch as mod
+
+    seen: dict[str, str] = {}
+
+    def fake_run(cmd: list[str], check: bool = False) -> subprocess.CompletedProcess[str]:
+        path = Path(cmd[cmd.index("--system") + 1])
+        seen["system"] = path.read_text(encoding="utf-8")
+        return subprocess.CompletedProcess(cmd, 0)
+
+    (project / "harness.project.yaml").write_text(
+        "roles:\n  implementer: {agent: d.md, worker: api}\n"
+        "workers:\n  api:\n    adapter: api-chat\n    base_url: http://x\n    model: m\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(mod.subprocess, "run", fake_run)
+    assert mod.main([str(project), "--role", "implementer"]) == 0
+    assert seen["system"] == mod.default_system()
+    assert "Você é o papel implementer" in seen["system"]
+
+
+def test_system_com_cli_agent_sai_com_2(project: Path) -> None:
+    custom = project / "work" / "sys.txt"
+    custom.write_text("x", encoding="utf-8")
+    assert dispatch(project, "--role", "refiner", "--system", str(custom)).returncode == 2
