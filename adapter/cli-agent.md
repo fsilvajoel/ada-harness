@@ -59,6 +59,16 @@ tentativa falha (saída diferente de 0, timeout, resposta vazia, jq inválido); 
 Tentativas, conferência da cópia, gates e escalada continuam com o orquestrador. O worker declara
 `executor: <caminho do cli_agent.py>` só como lembrete de qual script chamar.
 
+## Despacho automático
+O orquestrador não chama o executor à mão: roda `python3 <harness>/script/dispatch.py <raiz do projeto> --role <papel>
+[--second-opinion] [--skills <itens do cartão>] [--request ARQ] [--cwd <cópia>] [--output ARQ] [--meta ARQ]`. O
+[`dispatch.py`](../script/dispatch.py) lê `roles.<papel>.worker` (ou `second_opinion` com `--second-opinion`), descobre
+o `adapter` de `workers.<nome>` e chama `cli_agent.py` (cli-agent) ou `api_chat.py` (api-chat) com `--role` e `--skills`,
+de modo que as skills do papel e do cartão entram no briefing sem o orquestrador montar nada. `--mode` padrão: `write`
+para `refiner` e `implementer`, `read` para os demais (e só vale para cli-agent). stdin/stdout/stderr e o código de
+saída são os do executor. Papel sem trabalhador configurado = saída `8` (o orquestrador usa o `agent` do papel);
+trabalhador ausente ou `adapter` sem executor = `2`.
+
 ## Chamada
 Na pasta da cópia: `<command> <read_args | write_args>`, com o briefing no **stdin** (sem limite de tamanho de
 argumento) e `timeout_s` como limite. Cada tentativa é uma execução nova, sem sessão anterior.

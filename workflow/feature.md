@@ -46,7 +46,8 @@ Marque cada item na ordem. Gate FAIL ou SKIP bloqueia o item seguinte; a mensage
 ### 1b. refinamento funcional
 - [ ] Chamar **refiner** com `plano.md`, `estado.json`, os cartões que o plano cita e a fila de pendências de PM
       (`pm_queue` do `harness.project.yaml`). Com `roles.refiner.worker`, a etapa vai para esse trabalhador em
-      modo escrita restrita ([cli-agent](../adapter/cli-agent.md)).
+      modo escrita restrita, despachado por `script/dispatch.py --role refiner --skills <cartão>`
+      ([cli-agent](../adapter/cli-agent.md#despacho-automático)).
 - [ ] O refiner confere: (a) requisitos completos para escrever os testes e implementar: todo `A<n>` observável,
       regras com fonte, entradas e saídas exatas, erros, dependências e contrato; (b) todo cartão com DoR (o que
       precisa existir antes: dependências, arquivos a ler, caminhos permitidos) e DoD (como se prova pronto: itens
@@ -93,7 +94,8 @@ Marque cada item na ordem. Gate FAIL ou SKIP bloqueia o item seguinte; a mensage
 - [ ] Tirar o esboço da exclusão de cobertura.
 - [ ] Chamar **implementer** (skill `editar-arquivo`).
       Com `roles.implementer.worker` no `harness.project.yaml`, a etapa pode ir para esse trabalhador pelo
-      adaptador dele ([api-chat](../adapter/api-chat.md) ou [cli-agent](../adapter/cli-agent.md)).
+      adaptador dele ([api-chat](../adapter/api-chat.md) ou [cli-agent](../adapter/cli-agent.md)), via
+      `script/dispatch.py --role implementer --skills <cartão>`.
 - [ ] `pnpm gate tests-reviewed <feature>` → PASS (gate [testes-revisados](../gate/testes-revisados.md)).
       Teste alterado depois da revisão volta para a etapa 3.
 - [ ] `pnpm gate coverage <feature>` → PASS (gate [cobertura](../gate/cobertura.md)).
