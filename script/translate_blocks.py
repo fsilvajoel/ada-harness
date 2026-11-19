@@ -4,7 +4,7 @@
 Lê o `issue.md` gerado por `render_issue.py`. Cada bloco é procurado no cache JSON (`issue.cache.json`, hash ->
 tradução, ao lado do `issue.md`); os que faltam vão para um modelo via HTTP Ollama (`/api/chat`). Cada tradução passa
 por `check_issue_tokens.diff_tokens` (código, IDs, caminhos e números intactos): se reprovar, pede de novo, até 2
-novas tentativas; depois disso o comando falha e não grava nada. Com tudo aprovado grava `issue.pt-br.md` (blocos
+novas tentativas; depois disso o bloco reprovado fica em inglês e o comando sai com 1. Com tudo aprovado grava `issue.pt-br.md` (blocos
 trocados pela tradução) e atualiza o cache.
 
 Sem `--ollama-url` (nem `OLLAMA_URL`) só reporta quantos blocos faltam. O modelo vem de `--model` ou `OLLAMA_MODEL`.
@@ -43,7 +43,11 @@ THINK_RE = re.compile(r"<think>.*?</think>", re.DOTALL)
 
 
 class TranslateError(Exception):
-    """Tradução reprovada ou modelo inacessível."""
+    """Tradução reprovada no verificador de tokens."""
+
+
+class ModelUnavailableError(TranslateError):
+    """Modelo inacessível ou resposta inválida: aborta a execução (o cache já gravado fica)."""
 
 
 def find_blocks(text: str) -> dict[str, str]:
@@ -68,6 +72,8 @@ def ollama_ask(url: str, model: str, timeout: float = 300.0) -> Ask:
         payload = {
             "model": model,
             "stream": False,
+            "think": False,
+            "options": {"temperature": 0.2},
             "messages": [{"role": "user", "content": f"{PROMPT}\n\n{text}"}],
         }
         request = urllib.request.Request(
@@ -79,11 +85,11 @@ def ollama_ask(url: str, model: str, timeout: float = 300.0) -> Ask:
             with urllib.request.urlopen(request, timeout=timeout) as response:
                 data = json.loads(response.read().decode("utf-8"))
         except (urllib.error.URLError, OSError, json.JSONDecodeError) as exc:
-            raise TranslateError(f"modelo inacessível: {exc}") from exc
+            raise ModelUnavailableError(f"modelo inacessível: {exc}") from exc
         message = data.get("message") if isinstance(data, dict) else None
         content = message.get("content") if isinstance(message, dict) else None
         if not isinstance(content, str):
-            raise TranslateError("resposta do modelo sem message.content")
+            raise ModelUnavailableError("resposta do modelo sem message.content")
         return content
 
     return ask
@@ -92,11 +98,15 @@ def ollama_ask(url: str, model: str, timeout: float = 300.0) -> Ask:
 def translate_one(original: str, ask: Ask) -> str:
     """Traduz um bloco; reprova e repete até `MAX_RETRIES` vezes se os tokens protegidos divergirem."""
     problems: list[str] = []
+    hint = ""
     for _ in range(MAX_RETRIES + 1):
-        answer = THINK_RE.sub("", ask(original)).strip()
+        answer = THINK_RE.sub("", ask(original + hint)).strip()
         problems = diff_tokens(original, answer) if answer else ["tradução vazia"]
         if not problems:
             return answer
+        missing = [p.removeprefix("faltando: ").split(":", 1)[-1] for p in problems if p.startswith("faltando: ")]
+        if missing:
+            hint = "\n\n(Atenção: mantenha EXATAMENTE, sem alterar nem encurtar: " + "; ".join(missing) + ")"
     raise TranslateError(f"tradução reprovada após {MAX_RETRIES + 1} tentativas: {'; '.join(problems)}")
 
 
@@ -105,8 +115,34 @@ def apply_translations(text: str, translations: dict[str, str]) -> str:
     return BLOCK_RE.sub(lambda m: translations.get(m.group("hash"), m.group(0)), text)
 
 
+BATCH_SIZE = 8
+
+
+def translate_batch(items: list[tuple[str, str]], ask: Ask) -> dict[str, str]:
+    """Traduz um lote numa chamada só (`[n]` separa os itens); itens reprovados caem para a chamada individual."""
+    done: dict[str, str] = {}
+    if len(items) > 1:
+        body = "\n".join(f"[{n}] {' '.join(text.split())}" for n, (_, text) in enumerate(items, 1))
+        prompt = body + "\n\n(Traduza cada item mantendo os marcadores [n] e uma linha por item.)"
+        parts = re.split(r"(?m)^\[(\d+)\]\s*", THINK_RE.sub("", ask(prompt)).strip())
+        found = {int(parts[i]): parts[i + 1].strip() for i in range(1, len(parts) - 1, 2)}
+        for n, (digest, original) in enumerate(items, 1):
+            answer = found.get(n, "")
+            if answer and not diff_tokens(" ".join(original.split()), answer):
+                done[digest] = answer
+    for digest, original in items:
+        if digest not in done:
+            try:
+                done[digest] = translate_one(original, ask)
+            except ModelUnavailableError:
+                raise
+            except TranslateError as exc:
+                print(f"translate_blocks: bloco {digest} reprovado ({exc})", file=sys.stderr)
+    return done
+
+
 def run(issue: Path, cache_path: Path, out: Path, ask: Ask | None) -> tuple[int, str]:
-    """Executa a tradução; devolve (saída, mensagem). Só grava arquivos se tudo for aprovado."""
+    """Traduz em lotes, gravando o cache a cada lote; bloco reprovado fica em inglês (saída 1 ao final)."""
     text = issue.read_text(encoding="utf-8")
     blocks = find_blocks(text)
     cache = load_cache(cache_path)
@@ -114,15 +150,19 @@ def run(issue: Path, cache_path: Path, out: Path, ask: Ask | None) -> tuple[int,
     if missing and ask is None:
         return 0, f"{len(missing)} de {len(blocks)} bloco(s) sem tradução no cache; informe --ollama-url para traduzir"
     new = dict(cache)
+    pending = list(missing.items())
     try:
-        for digest, original in missing.items():
+        for start in range(0, len(pending), BATCH_SIZE):
             assert ask is not None
-            new[digest] = translate_one(original, ask)
+            new.update(translate_batch(pending[start : start + BATCH_SIZE], ask))
+            cache_path.write_text(json.dumps(new, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+            print(f"translate_blocks: {min(start + BATCH_SIZE, len(pending))}/{len(pending)}", file=sys.stderr)
     except TranslateError as exc:
-        return 1, f"translate_blocks: {exc}; nada foi gravado"
+        return 1, f"translate_blocks: {exc}"
     out.write_text(apply_translations(text, new), encoding="utf-8")
-    cache_path.write_text(json.dumps(new, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-    return 0, f"{len(blocks)} bloco(s): {len(missing)} traduzido(s), {len(blocks) - len(missing)} do cache -> {out}"
+    failed = [h for h in missing if h not in new]
+    msg = f"{len(blocks)} bloco(s): {len(missing) - len(failed)} traduzido(s), {len(blocks) - len(missing)} do cache, {len(failed)} reprovado(s) -> {out}"
+    return (1 if failed else 0), msg
 
 
 def main(argv: list[str] | None = None, ask: Ask | None = None) -> int:

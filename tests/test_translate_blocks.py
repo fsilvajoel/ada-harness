@@ -28,19 +28,20 @@ def issue(tmp_path: Path) -> Path:
 
 
 class Fake:
-    def __init__(self, answers: dict[str, list[str]]) -> None:
-        self.answers = answers
+    """Modelo simulado: devolve as respostas em ordem e registra cada prompt."""
+
+    def __init__(self, answers: list[str]) -> None:
+        self.answers = list(answers)
         self.calls: list[str] = []
 
     def __call__(self, text: str) -> str:
         self.calls.append(text)
-        return self.answers[text].pop(0)
+        return self.answers.pop(0)
 
 
-GOOD = {
-    A: ["Escreva o teste para `RF-01` em src/a.ts"],
-    B: ["passa em 3 passos"],
-}
+TA = "Escreva o teste para `RF-01` em src/a.ts"
+TB = "passa em 3 passos"
+BATCH_OK = f"[1] {TA}\n[2] {TB}"
 
 
 def test_without_url_only_reports(issue: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch) -> None:
@@ -51,42 +52,80 @@ def test_without_url_only_reports(issue: Path, capsys: pytest.CaptureFixture[str
 
 
 def test_translates_writes_output_and_cache(issue: Path) -> None:
-    fake = Fake({k: list(v) for k, v in GOOD.items()})
+    fake = Fake([BATCH_OK])
     assert main([str(issue)], ask=fake) == 0
+    assert len(fake.calls) == 1 and "[1] " + A in fake.calls[0] and "[2] " + B in fake.calls[0]
     out = (issue.parent / "issue.pt-br.md").read_text(encoding="utf-8")
-    assert "- Escreva o teste para `RF-01` em src/a.ts" in out and "<!--t:" not in out
+    assert f"- {TA}" in out and "<!--t:" not in out
     cache = json.loads((issue.parent / "issue.cache.json").read_text(encoding="utf-8"))
-    assert sorted(cache.values()) == sorted(v[0] for v in GOOD.values())
+    assert sorted(cache.values()) == sorted([TA, TB])
 
 
 def test_cache_hit_skips_the_model(issue: Path) -> None:
     from script.render_issue import short_hash
 
-    cache = {short_hash(A): GOOD[A][0], short_hash(B): GOOD[B][0]}
+    cache = {short_hash(A): TA, short_hash(B): TB}
     (issue.parent / "issue.cache.json").write_text(json.dumps(cache), encoding="utf-8")
     fake = Fake({})
     assert main([str(issue)], ask=fake) == 0 and fake.calls == []
     assert "passa em 3 passos" in (issue.parent / "issue.pt-br.md").read_text(encoding="utf-8")
 
 
-def test_rejected_translation_is_retried(issue: Path) -> None:
-    fake = Fake({A: ["Escreva o teste para `RF-02` em src/a.ts", GOOD[A][0]], B: list(GOOD[B])})
+def test_rejected_item_falls_back_to_individual_call(issue: Path) -> None:
+    fake = Fake([f"[1] Escreva o teste para `RF-02` em src/a.ts\n[2] {TB}", TA])
     assert main([str(issue)], ask=fake) == 0
-    assert fake.calls.count(A) == 2
+    assert len(fake.calls) == 2 and fake.calls[1] == A
+    assert TA in (issue.parent / "issue.pt-br.md").read_text(encoding="utf-8")
 
 
-def test_fails_after_retries_and_writes_nothing(issue: Path, capsys: pytest.CaptureFixture[str]) -> None:
+def test_batch_out_of_order_is_parsed_by_marker(issue: Path) -> None:
+    fake = Fake([f"[2] {TB}\n[1] {TA}"])
+    assert main([str(issue)], ask=fake) == 0 and len(fake.calls) == 1
+    out = (issue.parent / "issue.pt-br.md").read_text(encoding="utf-8")
+    assert f"- {TA}\n- {TB}" in out
+
+
+def test_batch_missing_item_is_retried_alone(issue: Path) -> None:
+    fake = Fake([f"[1] {TA}", TB])
+    assert main([str(issue)], ask=fake) == 0
+    assert len(fake.calls) == 2 and fake.calls[1] == B
+
+
+def test_rejected_block_stays_english_and_exit_is_1(issue: Path, capsys: pytest.CaptureFixture[str]) -> None:
     bad = "passa em 4 passos"
-    fake = Fake({A: list(GOOD[A]), B: [bad, bad, bad]})
+    fake = Fake([f"[1] {TA}\n[2] {bad}", bad, bad, bad])
     assert main([str(issue)], ask=fake) == 1
-    assert fake.calls.count(B) == 3
-    assert "nada foi gravado" in capsys.readouterr().err
-    assert not (issue.parent / "issue.pt-br.md").exists() and not (issue.parent / "issue.cache.json").exists()
+    assert [c.split("\n\n(Atenção")[0] for c in fake.calls[1:]] == [B, B, B]
+    assert "1 reprovado" in capsys.readouterr().err
+    out = (issue.parent / "issue.pt-br.md").read_text(encoding="utf-8")
+    assert TA in out and B in out and bad not in out
+    cache = json.loads((issue.parent / "issue.cache.json").read_text(encoding="utf-8"))
+    assert list(cache.values()) == [TA]
+
+
+def test_cache_is_written_incrementally(tmp_path: Path) -> None:
+    texts = [f"task {n} here" for n in range(1, 10)]  # 9 blocos: lote de 8 + 1
+    path = tmp_path / "issue.md"
+    path.write_text("\n".join(f"- {mark(t)}" for t in texts) + "\n", encoding="utf-8")
+    first = "\n".join(f"[{n}] tarefa {n} aqui" for n in range(1, 9))
+    seen: list[int] = []
+
+    def ask(text: str) -> str:
+        if not seen:
+            seen.append(0)
+            return first
+        cache_file = tmp_path / "issue.cache.json"
+        seen.append(len(json.loads(cache_file.read_text(encoding="utf-8"))))  # cache já gravado no 1o lote
+        return "resposta sem os tokens"  # reprova o 9o bloco
+
+    assert main([str(path)], ask=ask) == 1
+    assert seen[:2] == [0, 8]  # na 1a chamada do 2o lote o cache já tinha os 8 do 1o
+    cache = json.loads((tmp_path / "issue.cache.json").read_text(encoding="utf-8"))
+    assert len(cache) == 8
 
 
 def test_ollama_http_call_uses_fixed_prompt(issue: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     sent: list[dict[str, object]] = []
-    replies = iter(GOOD[A] + GOOD[B])
 
     class Response(io.BytesIO):
         def __enter__(self) -> Response:
@@ -97,13 +136,14 @@ def test_ollama_http_call_uses_fixed_prompt(issue: Path, monkeypatch: pytest.Mon
 
     def fake_urlopen(request: object, timeout: float = 0) -> Response:
         sent.append({"url": getattr(request, "full_url"), "body": json.loads(getattr(request, "data"))})
-        return Response(json.dumps({"message": {"content": next(replies)}}).encode())
+        return Response(json.dumps({"message": {"content": BATCH_OK}}).encode())
 
     monkeypatch.setattr(translate_blocks.urllib.request, "urlopen", fake_urlopen)
     assert main([str(issue), "--ollama-url", "http://modelo.invalido:1/", "--model", "m"]) == 0
-    assert sent[0]["url"] == "http://modelo.invalido:1/api/chat"
+    assert len(sent) == 1 and sent[0]["url"] == "http://modelo.invalido:1/api/chat"
     body = sent[0]["body"]
     assert isinstance(body, dict) and body["model"] == "m" and body["stream"] is False
+    assert body["think"] is False and body["options"] == {"temperature": 0.2}
     assert str(body["messages"][0]["content"]).startswith(PROMPT)  # type: ignore[index]
 
 

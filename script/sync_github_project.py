@@ -107,6 +107,17 @@ def translated_body(plano_dir: Path, fid: str) -> str | None:
     return text if marker in text else f"{marker}\n{text}"
 
 
+def translated_title(plano_dir: Path, fid: str) -> str | None:
+    """Título traduzido (primeira linha `# ...` de `issue.pt-br.md`), se existir e sem bloco de tradução pendente."""
+    path = plano_dir / fid / TRANSLATED_NAME
+    if not path.is_file():
+        return None
+    first = path.read_text(encoding="utf-8").partition("\n")[0]
+    if not first.startswith("# ") or "<!--t:" in first:
+        return None
+    return first[2:].strip() or None
+
+
 def status_fallback_body(fid: str, feature: dict[str, object], step_label: str, block: dict[str, object], cards: list[str]) -> str:
     """Corpo mínimo de status, usado só quando o renderizador não devolve a feature."""
     return "\n".join(
@@ -147,6 +158,7 @@ def desired_issues(
         body = status_fallback_body(fid, feature, step_label, block, cards_by_feature.get(fid, []))
         if item:
             body = (translated_body(plano_dir, fid) if plano_dir else None) or item.body.rstrip("\n")
+            title = (translated_title(plano_dir, fid) if plano_dir else None) or title
         issues.append(
             {
                 "kind": "feature",

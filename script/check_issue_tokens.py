@@ -15,7 +15,7 @@ from pathlib import Path
 
 CODE = re.compile(r"```.*?```|`[^`\n]+`", re.DOTALL)
 ID = re.compile(r"\b[A-Z]{1,5}-?[0-9]+(?:-[A-Z][0-9]+)*\b")
-NUMBER = re.compile(r"(?<![\w-])[0-9]+(?:[.,][0-9]+)*(?![\w-])")
+NUMBER = re.compile(r"(?<!\w)[0-9]+(?:[.,][0-9]+)*(?!\w)")
 PATH = re.compile(r"[\w.@-]+(?:/[\w.@-]+)+|[\w-]+\.(?:ts|tsx|md|py|yaml|yml|json|png|jpg|svg|mts|mjs)\b")
 
 

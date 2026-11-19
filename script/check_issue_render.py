@@ -30,7 +30,7 @@ URL_RE = re.compile(r"https?://\S+")
 WORD_RE = re.compile(r"[A-Za-z']+")
 ENGLISH_STOPWORDS: frozenset[str] = frozenset(
     {
-        "the", "and", "with", "must", "should", "will", "when", "which", "that", "this", "from",
+        "the", "and", "with", "must", "should", "will", "when", "which", "that", "this",
         "are", "not", "only", "each", "into", "without", "have", "has", "does", "your",
     }
 )  # fmt: skip
@@ -52,7 +52,10 @@ def prose_lines(text: str) -> list[tuple[int, str]]:
     clean = strip_code(clean)
     clean = LINK_RE.sub(lambda m: m.group(0).replace(m.group("target"), ""), clean)
     clean = URL_RE.sub(" ", clean)
-    return [(n, line) for n, line in enumerate(clean.splitlines(), 1) if line.strip()]
+    code_line = re.compile(r"^\s*(?:-\s+)?(?:import|export)\b.*(?:from\s+[\"'][^\"']+[\"']|[\"'][^\"']+[\"'];?)\s*$")
+    return [
+        (n, line) for n, line in enumerate(clean.splitlines(), 1) if line.strip() and not code_line.match(line)
+    ]
 
 
 def english_hits(line: str) -> list[str]:

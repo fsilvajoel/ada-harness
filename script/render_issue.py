@@ -101,6 +101,14 @@ def short_hash(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()[:HASH_LEN]
 
 
+def header(issue: "Rendered") -> str:
+    """Linha `# título` do arquivo; no título de feature o texto em inglês vai em bloco de tradução."""
+    if issue.kind == "feature":
+        prefix, _, rest = issue.title.partition("] ")
+        return f"# {prefix}] {mark(rest)}"
+    return f"# {issue.title}"
+
+
 def mark(text: str) -> str:
     """Embrulha texto em inglês no marcador de tradução `<!--t:HASH-->...<!--/t-->`."""
     clean = text.strip()
@@ -555,11 +563,11 @@ def main(argv: list[str] | None = None) -> int:
         return 2
     if args.out is None:
         for issue in issues:
-            print(f"# {issue.title}\n\n{issue.body}")
+            print(f"{header(issue)}\n\n{issue.body}")
         return 0
     args.out.mkdir(parents=True, exist_ok=True)
     for issue in issues:
-        (args.out / f"{issue.id}.md").write_text(f"# {issue.title}\n\n{issue.body}", encoding="utf-8")
+        (args.out / f"{issue.id}.md").write_text(f"{header(issue)}\n\n{issue.body}", encoding="utf-8")
     print(f"{len(issues)} issue(s) em {args.out}")
     return 0
 
