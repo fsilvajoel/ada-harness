@@ -10,24 +10,45 @@ e roda os gates. **Quem aprova é o gate, nunca a palavra do modelo.**
 - O trabalhador não escreve nem altera teste, plano ou `estado.json` e não faz commit. Isso fica com o orquestrador.
 
 ## Configuração (no `harness.project.yaml` do projeto)
-- `workers.<nome>`: `adapter: api-chat`, `base_url`, `model`, `key_env` (variável de ambiente com a chave),
-  `key_file` (de onde o humano carrega a chave), `quota_url` e `quota_remaining` (caminho jq até as requisições
-  restantes no dia), `quota_reserve` (folga mínima), `max_attempts` (padrão 6) e `timeout_s`.
+- `workers.<nome>`: `adapter: api-chat`, `base_url`, `model`, `key_env` (nome da chave),
+  `key_file` (arquivo de segredos com a linha da chave, relativo à raiz), `quota_url` e `quota_remaining`
+  (caminho jq simples até as requisições restantes no dia), `quota_reserve` (folga mínima), `max_attempts`
+  (padrão 6) e `timeout_s`.
 - `roles.<papel>.worker: <nome>`: o papel pode ser executado por esse trabalhador. Sem a chave, o papel segue
   com o `agent` de sempre.
 - `role_context.<papel>`: arquivos do projeto com as regras de tipagem e lint que vão no pedido.
 
 ## Chave
-- O orquestrador usa a chave só pela variável `key_env` do ambiente dele, dentro do comando
-  (`-H "Authorization: Bearer $<key_env>"`). Não lê `key_file`, não imprime, não loga e não grava o valor
-  ([security](../policy/security.md), [edit-guard](../gate/edit-guard.md)).
-- Quem carrega a variável é o humano, ao abrir a sessão, exportando **só ela** a partir de `key_file`.
-- Variável vazia = escalada (`no-key`).
+- O orquestrador não lê, não exporta, não imprime nem cita a chave ou o `key_file` no comando: quem resolve é o
+  [executor](#executor) ([security](../policy/security.md), [edit-guard](../gate/edit-guard.md)).
+- Ordem de resolução: variável `key_env` do ambiente, se não vazia; senão só a linha `<key_env>=` do `key_file`
+  (relativo à raiz do projeto; aceita `export `, aspas e CRLF). O resto do arquivo não entra no ambiente.
+- Sem chave nas duas = escalada (`no-key`).
+
+## Executor
+A consulta de cota ([Antes de cada requisição](#antes-de-cada-requisição), item 2) e o pedido de cada tentativa
+são uma execução de `script/api_chat.py` do harness:
+
+```bash
+python3 <harness>/script/api_chat.py <raiz do projeto> <trabalhador> \
+  --system <arquivo system> --request <arquivo user> --output <arquivo resposta> --meta <arquivo meta>
+```
+
+- Sem `--request`, o pedido user vem do stdin; sem `--output`, a resposta vai para o stdout; sem `--meta`, o resumo
+  vai para o stderr. Os arquivos ficam no temp do orquestrador.
+- Consulta a cota e faz **uma** chamada (`temperature` 0, `timeout_s`). Tentativas, aplicação e gates seguem com o
+  orquestrador.
+- Resumo (JSON): `worker`, `model`, `status`, `exit_code`, `key_source` (`env` ou `key_file`), `http_status`,
+  `quota_remaining`, `quota_reserve`, `finish_reason`, `usage` e `error`. Nunca traz a chave; o que ecoar a chave
+  sai mascarado (`***`).
+- Saída: `0` ok; `2` uso ou configuração inválida; `3` sem chave (`no-key`, escala); `4` cota abaixo da reserva ou
+  consulta falhou (`quota`, escala); `5` HTTP 429 (escala); `6` HTTP diferente de 200, timeout, rede, corpo com
+  `error` ou resposta vazia (tentativa falha).
 
 ## Antes de cada requisição
 1. Pré-condição (só na primeira): `testShas` gravado e `gates.tests-reviewed.status = PASS` no estado.
-2. Cota: `GET <quota_url>` com a chave; ler `quota_remaining`. Se o valor for menor ou igual a `quota_reserve`,
-   ou se a consulta falhar, escala (`quota`). Não espera a cota voltar.
+2. Cota (feita pelo executor): `GET <quota_url>` com a chave; ler `quota_remaining`. Se o valor for menor ou
+   igual a `quota_reserve`, ou se a consulta falhar, escala (`quota`). Não espera a cota voltar.
 3. Guardar uma cópia dos arquivos de `sources` como estavam antes da primeira tentativa (no temp da ferramenta).
 
 ## Pedido

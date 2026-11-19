@@ -14,7 +14,7 @@ alvo e não pertence a ele: tudo o que é do projeto (papéis, comandos, skills,
 | `policy/` | regras globais (inclui [idioma](policy/idioma.md)) |
 | `workflow/` | sequência de etapas e passagens |
 | `gate/` | critérios que aprovam ou bloqueiam (PASS/FAIL) |
-| `script/` | utilitários do harness (checks portable e skill-format) |
+| `script/` | utilitários do harness (checks portable e skill-format, executor api-chat) |
 | `tests/` | validação do próprio harness |
 
 ## Regras de arquitetura

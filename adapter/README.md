@@ -10,4 +10,6 @@ O adaptador não muda o núcleo.
 | [api-chat](api-chat.md) | modelo por API de chat compatível com OpenAI, sem ferramentas (trabalhador de um papel) |
 | [cli-agent](cli-agent.md) | agente de IA de linha de comando que edita arquivos numa cópia de trabalho (trabalhador de um papel) |
 
+O api-chat tem executor próprio: `script/api_chat.py` (uma requisição, chave resolvida pelo script).
+
 Ferramenta nova ganha um arquivo aqui quando for usada.
