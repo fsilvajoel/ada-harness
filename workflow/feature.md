@@ -12,14 +12,14 @@ aos outros.
 | Papel | Etapas |
 |---|---|
 | `planner` | plan |
-| `plan-reviewer` | revisão do plano (somente leitura) |
+| `refiner` | refinamento funcional (escreve só no plano, nos cartões da feature e na fila de PM) |
 | `test-writer` | tests |
 | `reviewer` | revisão dos testes, revisão final (somente leitura) |
 | `implementer` | implement |
 
 ## Pasta da feature
 Tudo da feature fica em `docs/plano/<feature>/` (moldes em [feature-artefatos/](feature-artefatos/README.md)):
-`plano.md`, `testes.md`, `revisao.md` (revisão do plano, dos testes e final) e `estado.json` ([formato](feature-artefatos/estado.md)).
+`plano.md`, `testes.md`, `revisao.md` (refinamento funcional, revisão dos testes e final) e `estado.json` ([formato](feature-artefatos/estado.md)).
 
 ## Lista do orquestrador
 Marque cada item na ordem. Gate FAIL ou SKIP bloqueia o item seguinte; a mensagem do gate diz o que falta.
@@ -36,21 +36,32 @@ Marque cada item na ordem. Gate FAIL ou SKIP bloqueia o item seguinte; a mensage
 - [ ] Criar `estado.json` com `feature`, `sources`, `domainSources`, `criteria` (`A<n>` → camadas), `tests`, `e2e`
       (caminhos dos testes previstos; `[]` se não há critério e2e) e `stages.plan = done`.
 
-### 1b. revisão do plano
-- [ ] Chamar **plan-reviewer** (somente leitura) com `plano.md`, `estado.json` e os cartões que o plano cita.
-      Com `roles.plan-reviewer.worker`, a etapa vai para esse trabalhador em modo leitura
-      ([cli-agent](../adapter/cli-agent.md)).
-- [ ] O plan-reviewer confere: (a) requisitos completos para escrever os testes e implementar: todo `A<n>`
-      observável, regras com fonte, entradas e saídas exatas, erros, dependências e contrato; (b) todo cartão
-      com DoR (o que precisa existir antes: dependências, arquivos a ler, caminhos permitidos) e DoD (como se
-      prova pronto: itens e checks) claros, verificáveis e coerentes com o plano.
-- [ ] Gravar o parecer no início de `revisao.md` ([molde](feature-artefatos/revisao-plano.md)) e
-      `stages.planReview` no estado, com `verdict` e `round`.
-- [ ] Reprovado: voltar à etapa 1 com a lista de achados; o planner corrige plano e cartões. `needs_input`:
-      perguntar ao humano e corrigir com a resposta.
-- [ ] Uma revisão por feature e, depois da correção, **no máximo uma reavaliação** (`round` 2). Reprovado de novo
-      = `needs_input`.
-- [ ] Bloqueio: a etapa 2 só começa com `stages.planReview.verdict = aprovado`.
+### 1b. refinamento funcional
+- [ ] Chamar **refiner** com `plano.md`, `estado.json`, os cartões que o plano cita e a fila de pendências de PM
+      (`pm_queue` do `harness.project.yaml`). Com `roles.refiner.worker`, a etapa vai para esse trabalhador em
+      modo escrita restrita ([cli-agent](../adapter/cli-agent.md)).
+- [ ] O refiner confere: (a) requisitos completos para escrever os testes e implementar: todo `A<n>` observável,
+      regras com fonte, entradas e saídas exatas, erros, dependências e contrato; (b) todo cartão com DoR (o que
+      precisa existir antes: dependências, arquivos a ler, caminhos permitidos) e DoD (como se prova pronto: itens
+      e checks) claros, verificáveis e coerentes com o plano.
+- [ ] O que não depende de decisão de produto ele **completa sozinho**, no plano e nos cartões da feature:
+      critério faltante, caso de erro que os docs aprovados já definem, DoR/DoD incompletos, `refs`, arquivos a
+      ler, checks. Sempre com fonte num doc aprovado; regra de negócio nova nunca é inventada.
+- [ ] O que depende do PM vira entrada na fila `pm_queue` (cartão, feature, pergunta, opções, sugestão padrão,
+      data, `status: aberta`).
+- [ ] Veredito: `pronto` (nada mudou), `ajustado` (editou; lista as mudanças) ou `pendencia-pm` (abriu entrada na
+      fila; pode ter ajustado o resto).
+- [ ] Conferir o diff: só podem mudar o `plano.md` da feature, os cartões dela (os demais cartões do arquivo ficam
+      idênticos) e a fila, nesta só entradas dos cartões da feature. Qualquer outra mudança = tentativa rejeitada
+      e nada é aplicado.
+- [ ] Gravar o parecer no início de `revisao.md` ([molde](feature-artefatos/refinamento.md)) e `stages.refinement`
+      no estado, com `verdict` e `round`. Com `ajustado`, atualizar `sources`, `domainSources`, `criteria`,
+      `tests` e `e2e` do estado se o plano mudou essas listas, e o esboço se o contrato mudou.
+- [ ] `pendencia-pm`: `stages.refinement.status = needs_input` até o PM responder na própria entrada da fila.
+      Com a resposta, chamar o refiner de novo (`round` 2): ele aplica a resposta e marca a entrada `resolvida`.
+- [ ] No máximo **2 chamadas por feature** (`round` 1 e 2). Se a rodada 2 ainda deixar pendência, a etapa fica
+      `needs_input` e o orquestrador conclui com o PM, sem nova chamada.
+- [ ] Bloqueio: a etapa 2 só começa com `stages.refinement.verdict` igual a `pronto` ou `ajustado`.
 
 ### 2. tests
 - [ ] Chamar **test-writer** (skill `escrever-teste`).

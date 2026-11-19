@@ -9,7 +9,7 @@ nos campos `gates` e `testShas`). Os outros papéis não editam este arquivo.
   "feature": "E4-F04",
   "stages": {
     "plan":       {"status": "done"},
-    "planReview": {"status": "done", "verdict": "aprovado", "round": 1},
+    "refinement": {"status": "done", "verdict": "ajustado", "round": 1},
     "tests":      {"status": "done"},
     "testReview": {"status": "done", "verdict": "aprovado"},
     "implement":  {"status": "running"},
@@ -44,9 +44,10 @@ Caminhos sempre relativos à raiz do repositório. Listas são de texto, sem rep
 
 - `feature`: ID da feature (igual ao nome da pasta). Num defeito, o ID do defeito (`D<n>`,
   [workflow defeito](../defeito.md)).
-- `stages.<etapa>.status`: `pending`, `running`, `done` ou um estado de falha (abaixo). Etapas: `plan`, `planReview`,
+- `stages.<etapa>.status`: `pending`, `running`, `done` ou um estado de falha (abaixo). Etapas: `plan`, `refinement`,
   `tests`, `testReview`, `implement`, `review`. `testReview` e `review` guardam também o `verdict` do reviewer;
-  `planReview` guarda o `verdict` do plan-reviewer e o `round` (1 ou 2, [revisão do plano](../feature.md)).
+  `refinement` guarda o `verdict` do refiner (`pronto`, `ajustado` ou `pendencia-pm`) e o `round` (1 ou 2,
+  [refinamento funcional](../feature.md)).
 - `sources`: `string[]`, arquivos de produção da feature (seção "Arquivos de produção" do plano). É o que o gate
   [cobertura](../../gate/cobertura.md) mede. Ausente = estado antigo (o gate cai na regra do nome).
 - `domainSources`: `string[]`, subconjunto de `sources` com regra de negócio ou cálculo (coluna "Domínio" do
@@ -101,6 +102,6 @@ Quando a etapa vai para um trabalhador ([api-chat](../../adapter/api-chat.md) ou
 ## Status das etapas
 | Status | Significado | O que fazer |
 |---|---|---|
-| `needs_input` | o papel ou o plano pediu decisão humana (inclusive pendência no domínio) | responder e retomar a etapa |
-| `failed` | o reviewer ou o plan-reviewer reprovou, ou o papel não entregou | refazer a etapa com a lista de achados |
+| `needs_input` | o papel ou o plano pediu decisão humana (inclusive pendência no domínio e `pendencia-pm` do refinamento) | responder e retomar a etapa |
+| `failed` | o reviewer reprovou, ou o papel não entregou | refazer a etapa com a lista de achados |
 | `error` | gate FAIL (ex.: teste passou antes da hora, sha mudou, cobertura ou mutação abaixo do limite, 0/0, teste pulado, critério sem teste da camada) | ler a mensagem do gate; não é sucesso |

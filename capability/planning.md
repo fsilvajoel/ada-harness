@@ -6,8 +6,9 @@ Definir escopo, domínio das entradas, critérios de aceite, cenários e contrat
 ## Composição
 - papel: `planner`
 - policy: [quality](../policy/quality.md)
-- gate: o `plan-reviewer` confere o plano (regras abaixo) e os cartões antes da etapa tests; o `reviewer`
-  reprova critério vago na revisão dos testes
+- gate: no refinamento funcional, o `refiner` confere o plano (regras abaixo) e os cartões antes da etapa tests,
+  completa o que não depende do PM e põe o resto na fila de PM; o `reviewer` reprova critério vago na revisão
+  dos testes
 - artefato: [plano.md](../workflow/feature-artefatos/plano.md)
 - workflow: [feature](../workflow/feature.md), etapa plan
 

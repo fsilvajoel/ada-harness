@@ -13,7 +13,7 @@ language:
 roles:
   orchestrator: {agent: null}
   planner: {agent: <definição do papel>}
-  plan-reviewer: {agent: <definição do papel>, worker: <nome do trabalhador cli-agent em modo leitura (opcional)>}
+  refiner: {agent: <definição do papel>, worker: <nome do trabalhador cli-agent (opcional)>}
   test-writer: {agent: <definição do papel>}
   reviewer: {agent: <definição do papel>, second_opinion: <nome do trabalhador cli-agent (opcional)>}
   implementer: {agent: <definição do papel>, worker: <nome do trabalhador (opcional)>}
@@ -30,8 +30,11 @@ workers:
 role_context:
   implementer:
     - <arquivo de regras do projeto>
-  plan-reviewer:
+  refiner:
     - <arquivo de regras do projeto>
+
+# Fila de pendências de PM do refinamento funcional (workflow/feature.md, etapa 1b): um arquivo único.
+pm_queue: <arquivo da fila>
 
 # Comandos de verificação. Workflows, skills e gates citam a chave (commands.test etc.), nunca o comando.
 commands:

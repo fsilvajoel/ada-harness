@@ -1,6 +1,6 @@
-# Revisão do plano <ID da feature>
+# Refinamento funcional <ID da feature>
 
-revisor: plan-reviewer
+refinador: refiner
 rodada: <1 | 2>
 
 ## Requisitos
@@ -12,13 +12,13 @@ rodada: <1 | 2>
 ## Cartões
 | Cartão | DoR | DoD |
 |---|---|---|
-| <ID> | ok / <o que falta> | ok / <o que falta> |
+| <ID> | ok / ajustado / pendência | ok / ajustado / pendência |
 
 ## Veredito
-<aprovado | reprovado | needs_input>
+<pronto | ajustado | pendencia-pm>
 
-## Achados
-- <cartão ou A<n>> (alta | média | baixa): <o que falta ou está incoerente> → <correção sugerida>; "nenhum" se zero
+## Mudanças
+- <arquivo> (<cartão ou A<n>>): <o que foi completado> (fonte: <doc aprovado, seção>); "nenhuma" se `pronto`
 
-## Perguntas para o humano
-- <decisão que os documentos não respondem; "nenhuma" se zero>
+## Pendências de PM
+- <cartão>: <pergunta> (entrada gravada na fila `pm_queue`); "nenhuma" se zero
