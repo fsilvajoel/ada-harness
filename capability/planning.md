@@ -17,6 +17,9 @@ Definir escopo, domínio das entradas, critérios de aceite, cenários e contrat
 - **Critério com molde fixo.** Todo `A<n>` traz `entrada`, `domínio`, `saída`, `erro`, `fonte` e `camada`
   (`unit`, `prop`, `e2e` ou `mut`). Critério vago ("valor válido", "lança erro" sem dizer qual, "formato
   correto" sem o formato) é reprovado.
+- **Critério é comportamento.** Cada `A<n>` descreve comportamento observável e tem ao menos um cenário `C<n>`.
+  Qualidade geral (cobertura, typecheck, lint, formatação) não vira `A<n>`: já é cobrada pelos gates de
+  cobertura e pelos checks do `done`.
 - **Rejeição planejada.** Toda entrada da tabela tem ao menos um cenário de rejeição (exemplo rejeitado → erro).
 - **Arquivos de produção.** O plano lista os arquivos de produção da feature e marca os de domínio; a lista vira
   `sources` e `domainSources` no [estado](../workflow/feature-artefatos/estado.md).
