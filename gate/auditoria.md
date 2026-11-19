@@ -11,7 +11,7 @@ registrado.
 ## Critério de sucesso (PASS)
 `revisao.md` (modelos [testes](../workflow/feature-artefatos/auditoria.md) e
 [final](../workflow/feature-artefatos/revisao-final.md)) com veredito `aprovado`, sem lacuna aberta em
-critério de aceite, e os gates por script em PASS (`expect-red`, `tests-reviewed`, `coverage`).
+critério de aceite, e os gates por script em PASS (`expect-red`, `tests-reviewed`, `coverage`, `mutation`, `e2e`).
 
 ## Critério de falha (FAIL)
 Veredito `reprovado`, auditoria ausente, gate por script em FAIL ou lacuna aberta em critério de aceite.

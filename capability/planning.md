@@ -1,11 +1,23 @@
 # Capability: planning
 
 ## Objetivo
-Definir escopo, critérios de aceite, cenários e contrato antes da execução.
+Definir escopo, domínio das entradas, critérios de aceite, cenários e contrato antes da execução.
 
 ## Composição
 - papel: `planner`
 - policy: [quality](../policy/quality.md)
-- gate: o orquestrador confere o plano (critérios `A<n>`, cenários `C<n>`, contrato) antes da etapa tests
+- gate: o orquestrador confere o plano (regras abaixo) antes da etapa tests; o `reviewer` reprova critério vago
+  na revisão dos testes
 - artefato: [plano.md](../workflow/feature-artefatos/plano.md)
 - workflow: [feature](../workflow/feature.md), etapa plan
+
+## Regras do plano
+- **Domínio das entradas.** Toda entrada externa tem uma linha na tabela de domínio: formato aceito, mínimo,
+  máximo, exemplos rejeitados e erro esperado, com fonte. Entrada sem linha, ou limite sem fonte, é pendência.
+- **Critério com molde fixo.** Todo `A<n>` traz `entrada`, `domínio`, `saída`, `erro`, `fonte` e `camada`
+  (`unit`, `prop`, `e2e` ou `mut`). Critério vago ("valor válido", "lança erro" sem dizer qual, "formato
+  correto" sem o formato) é reprovado.
+- **Rejeição planejada.** Toda entrada da tabela tem ao menos um cenário de rejeição (exemplo rejeitado → erro).
+- **Arquivos de produção.** O plano lista os arquivos de produção da feature e marca os de domínio; a lista vira
+  `sources` e `domainSources` no [estado](../workflow/feature-artefatos/estado.md).
+- **Pendência para a feature.** Qualquer pendência, inclusive no domínio, para o workflow até ser respondida.

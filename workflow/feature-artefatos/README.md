@@ -10,5 +10,6 @@ Copie o molde, troque os `<...>` e apague o que não se aplica.
 | revisão dos testes, revisão final | `revisao.md` ([testes](auditoria.md), [final](revisao-final.md)) | orquestrador, com a saída do reviewer |
 | todas | `estado.json` ([estado.md](estado.md)) | orquestrador e `pnpm gate` |
 
-Ordem: `plan → tests → revisão dos testes → implement → revisão final → fechamento`. A implementação só começa com
-os testes prontos e revisados (skill `revisar-teste`).
+Ordem: `plan → tests → revisão dos testes → implement → mutação e e2e → revisão final → fechamento`. A implementação só começa com
+os testes prontos e revisados (skill `revisar-teste`). Achado da revisão final não corrigido na hora vira defeito
+([workflow defeito](../defeito.md)).

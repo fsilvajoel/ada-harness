@@ -25,15 +25,20 @@ Marque cada item na ordem. Gate FAIL ou SKIP bloqueia o item seguinte; a mensage
 
 ### 1. plan
 - [ ] Chamar **planner** com o ID da feature.
-- [ ] Conferir `plano.md`: escopo, contrato (arquivo + assinatura), todo `A<n>` verificável, todo `C<n>` com
-      valor esperado de fonte citada, arquivos de teste previstos. Pendência no plano = parar e perguntar.
+- [ ] Conferir `plano.md` pelas [regras do plano](../capability/planning.md#regras-do-plano): escopo, contrato
+      (arquivo + assinatura), arquivos de produção com a marca de domínio, tabela de domínio de toda entrada
+      externa (formato, mínimo, máximo, exemplos rejeitados, erro esperado, fonte), todo `A<n>` no molde fixo com
+      `camada`, todo `C<n>` com valor esperado de fonte citada e ao menos uma rejeição por entrada, arquivos de
+      teste previstos. Critério vago ou pendência (inclusive no domínio) = parar e perguntar.
 - [ ] Criar o **esboço** do contrato (assinaturas que lançam `Error("esboço: não implementado")`) e excluí-lo
       da cobertura enquanto não for implementado.
-- [ ] Criar `estado.json` com `feature`, `tests` (caminhos dos testes previstos) e `stages.plan = done`.
+- [ ] Criar `estado.json` com `feature`, `sources`, `domainSources`, `criteria` (`A<n>` → camadas), `tests`, `e2e`
+      (caminhos dos testes previstos; `[]` se não há critério e2e) e `stages.plan = done`.
 
 ### 2. tests
 - [ ] Chamar **test-writer** (skill `escrever-teste`).
-- [ ] Gravar em `estado.json` os `scenarios` (`C<n>` → teste) e ajustar `tests` se a lista mudou.
+- [ ] Gravar em `estado.json` os `scenarios` (`C<n>` → critério, camada, arquivo, teste) e ajustar `tests` e `e2e`
+      se a lista mudou. Todo critério tem cenário em cada camada declarada ([testing](../capability/testing.md)).
 - [ ] `pnpm gate expect-red <feature>` → PASS (gate [expect-red](../gate/expect-red.md)).
 
 ### 3. revisão dos testes
@@ -50,12 +55,22 @@ Marque cada item na ordem. Gate FAIL ou SKIP bloqueia o item seguinte; a mensage
       Teste alterado depois da revisão volta para a etapa 3.
 - [ ] `pnpm gate coverage <feature>` → PASS (gate [cobertura](../gate/cobertura.md)).
 
-### 5. revisão final
+### 5. mutação e e2e
+- [ ] `pnpm gate mutation <feature>` → PASS (gate [mutacao](../gate/mutacao.md)): score dos `domainSources` maior ou
+      igual a `gates.mutation.min_score` do `harness.project.yaml`.
+- [ ] `pnpm gate e2e <feature>` → PASS (gate [e2e](../gate/e2e.md)).
+- [ ] FAIL: voltar à etapa 2 (faltou teste; mutante sobrevivente pede caso novo) ou 4 (código errado). Teste novo
+      passa de novo pelas etapas 3 e 4.
+
+### 6. revisão final
 - [ ] Chamar **reviewer** para o diff; acrescentar a saída a `revisao.md` (gate [auditoria](../gate/auditoria.md),
       manual).
 - [ ] Reprovado: voltar à etapa 4 (ou 2, se faltar teste).
 
-### 6. fechamento
+### 7. fechamento
+- [ ] Achado da revisão final que não foi corrigido na hora (inclusive "baixa" e "risco aceito") vira defeito:
+      `docs/defeitos/D<n>.md`, com origem `revisão` e esta feature como feature de origem
+      ([workflow defeito](defeito.md)). O `revisao.md` cita o `D<n>`.
 - [ ] `pnpm verify` verde (gate [done-checks](../gate/done-checks.md)).
 - [ ] `stages.review = done` no estado; commit com hooks, citando o ID da feature.
 
@@ -66,8 +81,13 @@ Todos os gates abaixo estão **PASS**; qualquer FAIL ou SKIP bloqueia o aceite.
 
 - [ ] [expect-red](../gate/expect-red.md): PASS antes da implementação.
 - [ ] [testes-revisados](../gate/testes-revisados.md): sha atual de cada teste bate com o sha assinado.
-- [ ] [cobertura](../gate/cobertura.md): limites do `vitest.config` atendidos, sem teste pulado e sem 0/0.
-- [ ] [auditoria](../gate/auditoria.md): veredito `aprovado` em `revisao.md`.
+- [ ] [testes-revisados](../gate/testes-revisados.md): todo critério tem teste da camada declarada.
+- [ ] [cobertura](../gate/cobertura.md): 100% nos arquivos de `sources` da feature (limites do gate, não do
+      `vitest.config`), sem teste pulado e sem 0/0.
+- [ ] [mutacao](../gate/mutacao.md): score dos arquivos de domínio maior ou igual ao mínimo do projeto.
+- [ ] [e2e](../gate/e2e.md): fluxos e2e da feature passam; lista vazia só sem critério e2e.
+- [ ] [auditoria](../gate/auditoria.md): veredito `aprovado` em `revisao.md`; achado não corrigido registrado como
+      defeito.
 - [ ] [done-checks](../gate/done-checks.md): `pnpm verify` verde.
 
 ## Falhas

@@ -26,6 +26,11 @@ commands:
   format: <formatação>
   verify: <verificação completa>
 
+# Ferramentas e limites dos gates mutacao e e2e (gate/mutacao.md, gate/e2e.md). Mapas inline.
+gates:
+  mutation: {tool: <ferramenta de mutação>, min_score: <score mínimo, 0 a 100>}
+  e2e: {tool: <ferramenta e2e>}
+
 # Gate portable: textos do projeto que não podem aparecer dentro do harness.
 portable:
   forbidden:
