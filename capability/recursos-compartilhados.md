@@ -38,7 +38,10 @@ O harness, e não a memória do orquestrador, garante que cada agente recebe as 
    as injeta no pedido.
 2. **Da tarefa:** o campo opcional `skills` do cartão ([formato](../workflow/feature-artefatos/cartao.md)) declara o
    extra (ex.: `react-best-practices#rerender-memo` numa tarefa de frontend). Quem decide é o plano (SDD).
-3. **Peso:** `nome` traz só o índice `SKILL.md`; o detalhe vem por `nome#regra`; o `AGENTS.md` compilado nunca entra
+3. **Sem divergência:** o gate [role-skills](../gate/role-skills.md) falha se `role_skills` e a seção "Skills
+   obrigatórias" do molde (`roles.<papel>.agent`) diferirem; o gate [card-skills](../gate/card-skills.md) exige
+   `skills:` nos cartões de `skills_required_paths` e confere que cada item existe.
+4. **Peso:** `nome` traz só o índice `SKILL.md`; o detalhe vem por `nome#regra`; o `AGENTS.md` compilado nunca entra
    por padrão; teto `skills_max_bytes`, que falha em vez de truncar.
 
 ## Regras
@@ -51,7 +54,7 @@ O harness, e não a memória do orquestrador, garante que cada agente recebe as 
 3. **Skill nova vai para `skill/`**, nunca para pasta de papel. Skill é lida pelo caminho do arquivo
    (`skill/<nome>/SKILL.md`); o molde do agente cita o caminho, não repete o texto.
 4. **Trabalhador sem ferramentas** ([api-chat](../adapter/api-chat.md#skills-e-regras-no-pedido),
-   [cli-agent](../adapter/cli-agent.md)): o **executor** inclui no pedido as skills do papel e as do cartão (índice
+   [cli-agent](../adapter/cli-agent.md)): o **executor** (`script/api_chat.py`, `script/cli_agent.py`) inclui no pedido as skills do papel e as do cartão (índice
    `SKILL.md`, mais as regras pedidas com `nome#regra`, com teto de tamanho). O orquestrador não escolhe nem cola.
 5. **Regra que só um papel lê é lacuna**: se outro papel pode precisar, ela entra aqui ou em `policy/`.
 

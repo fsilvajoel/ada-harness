@@ -43,6 +43,12 @@ role_skills:
   implementer:
     - <skill>
 
+# Gate card-skills (gate/card-skills.md): cartões em `cards_glob` cujo allowedPaths toca um prefixo de
+# `skills_required_paths` precisam declarar `skills:`, e cada item precisa existir em skill_dir.
+cards_glob: <glob dos arquivos de cartões, ex.: docs/plano/E*.yaml>
+skills_required_paths:
+  - <prefixo de caminho, ex.: o app web>
+
 # Teto (bytes) do bloco de skills e regras injetado no pedido (padrão 40000); acima dele o executor falha.
 skills_max_bytes: 40000
 
@@ -72,3 +78,5 @@ portable:
 checks:
   - portable
   - skill-format
+  - card-skills
+  - role-skills
