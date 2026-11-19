@@ -3,7 +3,7 @@
 
 Uso:
     api_chat.py <raiz do projeto> <trabalhador> [--request ARQ] [--system ARQ]
-                [--output ARQ] [--meta ARQ]
+                [--output ARQ] [--meta ARQ] [--role PAPEL] [--skills a,b#regra]
 
 - Lê `workers.<trabalhador>` do `harness.project.yaml` da raiz do projeto.
 - Resolve a chave sozinho: variável `key_env`, senão só a linha `<key_env>=` do
@@ -13,6 +13,10 @@ Uso:
   de `--request` ou do stdin; `--system` é opcional.
 - A resposta (`choices[0].message.content`) vai para o stdout ou `--output`; o
   resumo de metadados, em JSON, vai para o stderr ou `--meta`.
+
+- Skills (`script/skill_inject.py`): junta `role_skills.<--role>` do projeto com `--skills` (campo `skills`
+  do cartão) e anexa ao pedido a seção `# Skills e regras`. Tamanho por recurso no meta (`skills`); acima do
+  teto `skills_max_bytes` = saída 2, sem chamar a API.
 
 A chave nunca vai para argv, stdout, stderr nem mensagens de erro: segue só no
 cabeçalho da requisição, e todo texto de saída passa por máscara.
@@ -38,6 +42,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from script.project_config import ConfigValue, load_config
+from script.skill_inject import Injection, SkillError, injection_for, split_cli_items
 
 # Códigos de saída (o orquestrador escala conforme adapter/api-chat.md).
 EXIT_OK: Final = 0
@@ -102,6 +107,7 @@ class Meta:
     finish_reason: str | None = None
     usage: JsonValue = None
     error: str | None = None
+    skills: list[dict[str, str | int]] | None = None
 
     def to_json(self) -> str:
         return json.dumps(self.__dict__, ensure_ascii=False)
@@ -329,10 +335,17 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     parser.add_argument("--system", type=Path, help="arquivo com a mensagem system (opcional)")
     parser.add_argument("--output", type=Path, help="arquivo da resposta (padrão: stdout)")
     parser.add_argument("--meta", type=Path, help="arquivo do resumo JSON (padrão: stderr)")
+    parser.add_argument("--role", help="papel: injeta role_skills.<papel> do harness.project.yaml")
+    parser.add_argument(
+        "--skills",
+        action="append",
+        default=[],
+        help="skills do cartão: nome ou nome#regra, separados por vírgula ou repetindo a opção",
+    )
     return parser.parse_args(argv)
 
 
-def build_messages(args: argparse.Namespace) -> list[JsonValue]:
+def build_messages(args: argparse.Namespace, injection: Injection) -> list[JsonValue]:
     try:
         user = args.request.read_text(encoding="utf-8") if args.request else sys.stdin.read()
         system = args.system.read_text(encoding="utf-8") if args.system else None
@@ -340,6 +353,8 @@ def build_messages(args: argparse.Namespace) -> list[JsonValue]:
         raise RunError(EXIT_CONFIG, f"pedido ilegível: {exc}") from None
     if not user.strip():
         raise RunError(EXIT_CONFIG, "pedido vazio")
+    if injection.block:
+        user = user.rstrip("\n") + "\n\n" + injection.block
     messages: list[JsonValue] = []
     if system is not None:
         messages.append({"role": "system", "content": system})
@@ -358,7 +373,14 @@ def run(args: argparse.Namespace, meta: Meta, secret: Secret) -> str:
     project_root = args.project_root.resolve()
     worker = load_worker(project_root, args.worker)
     meta.model = worker.model
-    messages = build_messages(args)
+    try:
+        injection = injection_for(project_root, args.role, split_cli_items(args.skills))
+    except SkillError as exc:
+        raise RunError(EXIT_CONFIG, f"skills: {exc}") from None
+    meta.skills = injection.summary() if injection.resources else None
+    for row in injection.summary_lines() if injection.resources else []:
+        print(row, file=sys.stderr)
+    messages = build_messages(args, injection)
     key, meta.key_source = resolve_key(worker, project_root)
     secret.value = key
     check_quota(worker, key, meta)

@@ -7,7 +7,9 @@
   `.claude/skills/`; por isso `.claude/skills` do projeto é **link simbólico** para `skill_dir` (`skill_link` no yaml):
   um conteúdo só, sem cópia. Criar: `ln -s <caminho relativo até o harness>/skill .claude/skills`. Os caminhos relativos
   dentro das skills valem na pasta física, então não quebram. Todo subagente lê todas as skills por esse caminho;
-  o molde do agente cita `skill/<nome>/SKILL.md`, não repete o texto.
+  o molde do agente cita `skill/<nome>/SKILL.md`, não repete o texto, e traz a lista **Skills obrigatórias** do papel
+  (a mesma de `role_skills` do yaml) com a ordem de ler todas **antes de começar**, mais as do campo `skills` do cartão
+  da tarefa ([formato](../workflow/feature-artefatos/cartao.md)). O orquestrador não precisa lembrar de nada.
 - **Tools dos subagentes:** todo papel tem `Read, Grep, Glob, Bash` (consulta e comandos de verificação/gates); a
   escrita (`Write`, `Edit`) segue o escopo do papel ([decisão](../capability/recursos-compartilhados.md)). A trava
   edit-guard bloqueia escrita fora do repositório, inclusive na pasta de skills, que é só leitura para os papéis.

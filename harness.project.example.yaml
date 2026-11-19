@@ -34,6 +34,18 @@ role_context:
   refiner:
     - <arquivo de regras do projeto>
 
+# Skills que cada papel lê SEMPRE, antes de começar (nomes de pastas de skill_dir). O executor injeta essas skills no
+# pedido de quem não tem ferramentas; o molde do agente com ferramentas manda ler as mesmas.
+# Skills extras por tarefa vêm do campo `skills` do cartão (workflow/feature-artefatos/cartao.md).
+role_skills:
+  planner:
+    - <skill>
+  implementer:
+    - <skill>
+
+# Teto (bytes) do bloco de skills e regras injetado no pedido (padrão 40000); acima dele o executor falha.
+skills_max_bytes: 40000
+
 # Fila de pendências de PM do refinamento funcional (workflow/feature.md, etapa 1b): um arquivo único.
 pm_queue: <arquivo da fila>
 

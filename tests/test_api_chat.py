@@ -256,3 +256,46 @@ def test_jq_path() -> None:
     document: JsonValue = {"data": {"a-b": [1, {"x": 7}]}}
     assert jq_path(document, '.data."a-b"[1].x') == 7
     assert jq_path(document, ".data.falta") is None
+
+
+def test_skills_do_papel_e_do_cartao_entram_no_pedido(tmp_path: Path, api: tuple[FakeApi, str]) -> None:
+    state, base = api
+    write_project(tmp_path, base, key_file=None)
+    folder = tmp_path / "skill" / "alfa"
+    (folder / "rules").mkdir(parents=True)
+    (folder / "SKILL.md").write_text("# indice\n", encoding="utf-8")
+    (folder / "rules" / "r1.md").write_text("regra r1\n", encoding="utf-8")
+    config = tmp_path / "harness.project.yaml"
+    config.write_text(
+        config.read_text(encoding="utf-8") + "skill_dir: skill\nrole_skills:\n  implementer:\n    - alfa\n",
+        encoding="utf-8",
+    )
+    env = {k: v for k, v in os.environ.items() if k != VAR} | {VAR: KEY}
+    result = subprocess.run(
+        [sys.executable, str(SCRIPT), str(tmp_path), "w", "--role", "implementer", "--skills", "alfa#r1"],
+        input="pedido", capture_output=True, text=True, env=env, timeout=30, check=False,
+    )
+    assert result.returncode == 0, result.stderr
+    content = str(state.chat_requests[0]["messages"][0]["content"])  # type: ignore[index]
+    assert content.startswith("pedido\n\n# Skills e regras\n")
+    assert content.count("=== RECURSO: skill/alfa/SKILL.md ===") == 1
+    assert "=== RECURSO: skill/alfa/rules/r1.md ===\nregra r1\n=== END RECURSO ===" in content
+    skills_meta = meta_of(result)["skills"]
+    assert isinstance(skills_meta, list) and len(skills_meta) == 2
+    assert "total: " in result.stderr
+
+
+def test_skill_inexistente_para_antes_da_api(tmp_path: Path, api: tuple[FakeApi, str]) -> None:
+    state, base = api
+    write_project(tmp_path, base, key_file=None)
+    (tmp_path / "skill").mkdir()
+    config = tmp_path / "harness.project.yaml"
+    config.write_text(config.read_text(encoding="utf-8") + "skill_dir: skill\n", encoding="utf-8")
+    env = {k: v for k, v in os.environ.items() if k != VAR} | {VAR: KEY}
+    result = subprocess.run(
+        [sys.executable, str(SCRIPT), str(tmp_path), "w", "--skills", "nao-existe"],
+        input="pedido", capture_output=True, text=True, env=env, timeout=30, check=False,
+    )
+    assert result.returncode == 2
+    assert "skill inexistente: 'nao-existe'" in str(meta_of(result)["error"])
+    assert state.chat_requests == []

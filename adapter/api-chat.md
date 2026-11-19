@@ -31,7 +31,8 @@ são uma execução de `script/api_chat.py` do harness:
 
 ```bash
 python3 <harness>/script/api_chat.py <raiz do projeto> <trabalhador> \
-  --system <arquivo system> --request <arquivo user> --output <arquivo resposta> --meta <arquivo meta>
+  --system <arquivo system> --request <arquivo user> --output <arquivo resposta> --meta <arquivo meta> \
+  --role <papel> --skills <itens do cartão, separados por vírgula>
 ```
 
 - Sem `--request`, o pedido user vem do stdin; sem `--output`, a resposta vai para o stdout; sem `--meta`, o resumo
@@ -39,9 +40,10 @@ python3 <harness>/script/api_chat.py <raiz do projeto> <trabalhador> \
 - Consulta a cota e faz **uma** chamada (`temperature` 0, `timeout_s`). Tentativas, aplicação e gates seguem com o
   orquestrador.
 - Resumo (JSON): `worker`, `model`, `status`, `exit_code`, `key_source` (`env` ou `key_file`), `http_status`,
-  `quota_remaining`, `quota_reserve`, `finish_reason`, `usage` e `error`. Nunca traz a chave; o que ecoar a chave
+  `quota_remaining`, `quota_reserve`, `finish_reason`, `usage`, `error` e `skills` (recursos injetados com bytes e linhas). Nunca traz a chave; o que ecoar a chave
   sai mascarado (`***`).
-- Saída: `0` ok; `2` uso ou configuração inválida; `3` sem chave (`no-key`, escala); `4` cota abaixo da reserva ou
+- `--role` e `--skills` ligam a [injeção de skills](#skills-e-regras-no-pedido); sem eles, o pedido segue como veio.
+- Saída: `0` ok; `2` uso ou configuração inválida (inclui skill inexistente e teto de skills); `3` sem chave (`no-key`, escala); `4` cota abaixo da reserva ou
   consulta falhou (`quota`, escala); `5` HTTP 429 (escala); `6` HTTP diferente de 200, timeout, rede, corpo com
   `error` ou resposta vazia (tentativa falha).
 
@@ -88,16 +90,27 @@ Um bloco por arquivo alterado. Texto fora dos blocos é ignorado.
    (`(arquivo novo)` se ainda não existe).
 6. Só a partir da 2ª tentativa, `# Falha da tentativa anterior`: o motivo da rejeição ou as últimas 150 linhas
    da saída do comando que falhou.
+7. `# Skills e regras`: anexada **pelo executor** no fim do `user` ([abaixo](#skills-e-regras-no-pedido)); o
+   orquestrador não a monta.
 
-### Recursos para quem não tem ferramentas
-O trabalhador não lê arquivo, skill nem gate; ele só vê o pedido. Todo papel tem direito a todas as skills, gates e
-regras ([recursos-compartilhados](../capability/recursos-compartilhados.md)), então o **orquestrador pode incluir no
-`user`**, depois do item 3, uma seção `# Skills e regras` com o conteúdo (inteiro ou o trecho que serve) de qualquer
-`skill/<nome>/SKILL.md`, `gate/*.md`, `policy/*.md` ou capability de que o papel precisa naquela chamada, cada um entre
-`=== RECURSO: <caminho> ===` e `=== END RECURSO ===`. O executor não muda: o pedido já é um arquivo montado pelo
-orquestrador. Skill que manda usar ferramenta (ex.: `Edit`) não se aplica ao trabalhador; o orquestrador aplica a
-resposta e roda os gates por ele. O recurso incluído é somente leitura e não amplia a lista de arquivos que ele pode
-escrever.
+### Skills e regras no pedido
+O trabalhador não lê arquivo, skill nem gate; ele só vê o pedido. Por isso **o executor inclui** no `user`, depois do
+conteúdo que o orquestrador montou, uma seção `# Skills e regras` com cada recurso entre
+`=== RECURSO: <caminho> ===` e `=== END RECURSO ===`. O orquestrador **não escolhe** skills: o que entra vem de
+documentos e configuração ([recursos-compartilhados](../capability/recursos-compartilhados.md)):
+
+- **do papel:** `role_skills.<papel>` do `harness.project.yaml`, passado ao executor em `--role <papel>`;
+- **do cartão:** campo `skills` da tarefa ([formato](../workflow/feature-artefatos/cartao.md)), passado em
+  `--skills a,b#regra` (o orquestrador só repassa o campo do cartão).
+
+Regras da injeção (`script/skill_inject.py`):
+- `nome` injeta só o `SKILL.md` (o índice); `nome#regra` injeta o índice e `rules/<regra>.md`. O `AGENTS.md`
+  compilado das skills nunca entra. Papel primeiro, cartão depois; o mesmo arquivo entra uma vez.
+- Skill ou regra inexistente, item mal formado ou total acima do teto `skills_max_bytes` (padrão 40000 bytes, no
+  `harness.project.yaml`) = **erro (saída 2, sem chamar a API)**, nunca truncamento em silêncio.
+- O tamanho de cada recurso (bytes e linhas) e o total saem no stderr e no `--meta` (campo `skills`).
+- Skill que manda usar ferramenta (ex.: `Edit`) não se aplica ao trabalhador; o orquestrador aplica a resposta e
+  roda os gates por ele. O recurso é somente leitura e não amplia a lista de arquivos que ele pode escrever.
 
 Nada de `key_file`, segredo ou arquivo fora dessa lista entra no pedido.
 

@@ -12,6 +12,13 @@ e mapeado em `roles` no `harness.project.yaml` do projeto. A definição de cada
 | `reviewer` | revisa os testes (skill revisar-teste) e o diff final; somente leitura | review-tests, final-review |
 | `implementer` | implementa até os testes revisados passarem; nunca altera teste revisado | implement |
 
+**Skills obrigatórias:** cada papel declara as que sempre lê antes de começar, em `role_skills.<papel>` do
+`harness.project.yaml` (e no molde do agente, igual). Quem não tem ferramentas as recebe injetadas pelo executor
+([api-chat](../adapter/api-chat.md#skills-e-regras-no-pedido)); as extras da tarefa vêm do campo `skills` do cartão
+([formato](../workflow/feature-artefatos/cartao.md)). Padrão sugerido: planner → `escrever-teste`; refiner →
+`escrever-teste`, `revisar-teste`; test-writer → `escrever-teste`, `revisar-teste`; reviewer → `revisar-teste`,
+`escrever-teste`, `coding-guidelines`; implementer → `editar-arquivo`, `coding-guidelines`.
+
 **Recursos:** a responsabilidade acima é o escopo de escrita. Todo papel lê todas as skills ([skill/](../skill/README.md)),
 gates, policies e moldes e roda os comandos de verificação ([decisão](../capability/recursos-compartilhados.md)); em
 caso excepcional faz trabalho de outro papel sem depender de quem fez a etapa anterior.

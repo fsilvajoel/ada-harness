@@ -31,6 +31,16 @@ Uso habitual (não exclusivo): planner → capability planning; refiner → regr
 `editar-arquivo`. Skills de terceiros (revisão, segurança, acoplamento etc.) valem para qualquer papel quando o
 plano ou o orquestrador pedir.
 
+## Skills obrigatórias por papel
+O harness, e não a memória do orquestrador, garante que cada agente recebe as skills de que precisa:
+1. **Do papel:** `role_skills.<papel>` no `harness.project.yaml` lista as skills que o papel **sempre** lê antes de
+   começar. O molde do agente (Claude Code) repete a lista e manda ler; o executor dos trabalhadores sem ferramentas
+   as injeta no pedido.
+2. **Da tarefa:** o campo opcional `skills` do cartão ([formato](../workflow/feature-artefatos/cartao.md)) declara o
+   extra (ex.: `react-best-practices#rerender-memo` numa tarefa de frontend). Quem decide é o plano (SDD).
+3. **Peso:** `nome` traz só o índice `SKILL.md`; o detalhe vem por `nome#regra`; o `AGENTS.md` compilado nunca entra
+   por padrão; teto `skills_max_bytes`, que falha em vez de truncar.
+
 ## Regras
 1. **Leitura e execução são abertas; escrita é por papel.** Quem escreve o quê não muda (planner só o plano,
    refiner só plano/cartões/fila, test-writer só teste e `testes.md`, reviewer nada, implementer só o escopo).
@@ -40,8 +50,9 @@ plano ou o orquestrador pedir.
    fica com o orquestrador.
 3. **Skill nova vai para `skill/`**, nunca para pasta de papel. Skill é lida pelo caminho do arquivo
    (`skill/<nome>/SKILL.md`); o molde do agente cita o caminho, não repete o texto.
-4. **Trabalhador sem ferramentas** ([api-chat](../adapter/api-chat.md)): o orquestrador inclui no pedido o conteúdo
-   das skills, gates e regras de que o papel precisa naquela chamada.
+4. **Trabalhador sem ferramentas** ([api-chat](../adapter/api-chat.md#skills-e-regras-no-pedido),
+   [cli-agent](../adapter/cli-agent.md)): o **executor** inclui no pedido as skills do papel e as do cartão (índice
+   `SKILL.md`, mais as regras pedidas com `nome#regra`, com teto de tamanho). O orquestrador não escolhe nem cola.
 5. **Regra que só um papel lê é lacuna**: se outro papel pode precisar, ela entra aqui ou em `policy/`.
 
 ## Registro

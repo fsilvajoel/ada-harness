@@ -68,7 +68,15 @@ Montado pelo orquestrador, nesta ordem:
 6. Implementer: `# Arquivos que você pode escrever`, a lista de `sources`, e a regra de que teste é somente leitura.
    Refiner: `# Arquivos que você pode escrever`, o `plano.md`, o arquivo dos cartões (só os IDs da feature) e
    `pm_queue`, e a regra de que teste, código, PRD, RFC e ADR são somente leitura.
-7. Só a partir da 2ª tentativa, `# Falha da tentativa anterior`: o motivo da rejeição ou as últimas 150 linhas da
+7. `# Skills e regras`: as skills do papel (`role_skills.<papel>`) e as do campo `skills` do cartão, **incluídas no
+   briefing pelo harness, não escolhidas pelo orquestrador**, no mesmo contrato do
+   [api-chat](api-chat.md#skills-e-regras-no-pedido): cada recurso entre `=== RECURSO: <caminho> ===` e
+   `=== END RECURSO ===`, `nome` = só o `SKILL.md`, `nome#regra` = índice + `rules/<regra>.md`, nunca o `AGENTS.md`
+   compilado, sem repetição, erro claro se faltar recurso ou passar de `skills_max_bytes`. Não há executor próprio do
+   cli-agent: o bloco sai de `python3 <harness>/script/skill_inject.py <raiz do projeto> --role <papel> --skills <itens
+   do cartão>` (stdout) e é anexado ao briefing; o tamanho por recurso sai no stderr e vai para o registro. O agente
+   também pode ler os arquivos na cópia de trabalho, mas não depende disso.
+8. Só a partir da 2ª tentativa, `# Falha da tentativa anterior`: o motivo da rejeição ou as últimas 150 linhas da
    saída do comando que falhou.
 
 ## Conferência
@@ -101,7 +109,7 @@ Iguais aos do [api-chat](api-chat.md#aplicação-e-gates), rodados no projeto: `
 
 ## Tentativas e escalada
 - Conta como tentativa falha: saída diferente de 0, timeout (`timeout_s`), resposta vazia, resposta rejeitada e, no
-  implementer, gate FAIL. A próxima tentativa recebe o motivo (item 7 do briefing).
+  implementer, gate FAIL. A próxima tentativa recebe o motivo (item 8 do briefing).
 - Escala na hora: comando ausente ou não autenticado, limite de uso da ferramenta, projeto alterado fora da cópia.
 - Escala ao chegar a `max_attempts` falhas.
 - Escalar = restaurar `sources` para a cópia guardada antes da primeira tentativa (implementer) e registrar o motivo.

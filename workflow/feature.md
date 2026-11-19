@@ -11,8 +11,10 @@ aos outros.
 
 **Recursos compartilhados:** todo papel lê todas as skills ([skill/](../skill/README.md)), gates e policies e roda os
 comandos de verificação, qualquer que seja o papel da etapa anterior; a coluna abaixo é o escopo de escrita e a
-responsabilidade da etapa ([decisão](../capability/recursos-compartilhados.md)). No briefing de um trabalhador sem
-ferramentas, o orquestrador inclui o conteúdo necessário ([api-chat](../adapter/api-chat.md)).
+responsabilidade da etapa ([decisão](../capability/recursos-compartilhados.md)). As skills obrigatórias de cada
+papel e as do campo `skills` do cartão ([cartao.md](feature-artefatos/cartao.md)) o harness resolve sozinho: o executor
+as injeta no pedido de quem não tem ferramentas ([api-chat](../adapter/api-chat.md#skills-e-regras-no-pedido)) e o molde do papel manda
+o agente com ferramentas lê-las antes de começar. O orquestrador não escolhe skills.
 
 | Papel | Etapas |
 |---|---|

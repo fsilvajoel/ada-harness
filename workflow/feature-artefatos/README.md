@@ -10,6 +10,7 @@ Copie o molde, troque os `<...>` e apague o que não se aplica.
 | refinamento funcional (fila do projeto, fora da pasta da feature) | arquivo `pm_queue` ([molde](pendencias-pm.md)) | refiner; PM responde |
 | tests | [testes.md](testes.md) | test-writer |
 | revisão dos testes, revisão final | `revisao.md` ([testes](auditoria.md), [final](revisao-final.md)) | orquestrador, com a saída do reviewer |
+| (qualquer tarefa) | campo `skills` do cartão ([cartao.md](cartao.md)) | plano (SDD) |
 | todas | `estado.json` ([estado.md](estado.md)) | orquestrador e `pnpm gate` |
 
 Ordem: `plan → refinamento funcional → tests → revisão dos testes → implement → mutação e e2e → revisão final → fechamento`. A implementação só começa com
