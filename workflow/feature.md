@@ -120,7 +120,19 @@ Marque cada item na ordem. Gate FAIL ou SKIP bloqueia o item seguinte; a mensage
       `docs/defeitos/D<n>.md`, com origem `revisão` e esta feature como feature de origem
       ([workflow defeito](defeito.md)). O `revisao.md` cita o `D<n>`.
 - [ ] `pnpm verify` verde (gate [done-checks](../gate/done-checks.md)).
+- [ ] Atualizar as issues do GitHub quando o plano, os cartões, o PRD ou o estado mudarem
+      ([receita](#atualizar-as-issues)).
 - [ ] `stages.review = done` no estado; commit com hooks, citando o ID da feature.
+
+### Atualizar as issues
+A issue de feature e a de defeito são vitrines geradas dos docs, em pt-BR; nunca se edita à mão. Receita (a tradução
+pode ficar com um modelo local, o orquestrador confere):
+1. `script/render_issue.py <raiz> --all --out <pasta>`: renderiza (falha em link ou imagem quebrada).
+2. `script/translate_blocks.py <pasta>/<ID>.md --ollama-url ... --model ...`: traduz só os blocos novos ou
+   alterados (cache por hash); salve o resultado como `<pasta dos cartões>/<feature>/issue.pt-br.md`.
+3. `script/check_issue_render.py <pasta> --root <raiz> --translated`: gate (limite de caracteres, links, inglês residual).
+4. `script/sync_github_project.py <raiz> --repo dono/repo`: dry-run. `--apply` só com o ok do humano e o `gh` com o
+   escopo `project`.
 
 Regras que valem em todas as etapas: [policy/quality.md](../policy/quality.md).
 
