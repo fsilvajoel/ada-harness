@@ -66,6 +66,31 @@ Caminhos sempre relativos à raiz do repositório. Listas são de texto, sem rep
 - `gates.<nome>`: último resultado de cada gate (`PASS`/`FAIL`, horário ISO e detalhe), gravado pelo script.
   Nomes: `expect-red`, `tests-reviewed`, `coverage`, `mutation`, `e2e`.
 
+## Trabalhador
+Quando a etapa vai para um trabalhador ([adaptador api-chat](../../adapter/api-chat.md)), o orquestrador grava em
+`stages.<etapa>`:
+
+```json
+"implement": {
+  "status": "done",
+  "worker": "<nome>",
+  "model": "<modelo>",
+  "attempts": [
+    {"n": 1, "at": "2026-11-19T00:22:00.000Z", "requests": 1, "promptTokens": 909, "completionTokens": 384,
+     "result": "gate-fail", "detail": "commands.test: 2 de 6 testes falharam"},
+    {"n": 2, "at": "2026-11-19T00:25:00.000Z", "requests": 1, "promptTokens": 1210, "completionTokens": 402,
+     "result": "PASS", "detail": "test, typecheck, lint, format, tests-reviewed e coverage PASS"}
+  ],
+  "escalation": null
+}
+```
+
+- `attempts[].result`: `PASS`, `gate-fail` (comando ou gate em FAIL), `rejected` (resposta fora do formato ou
+  caminho proibido) ou `error` (rede, timeout, HTTP, corpo com erro ou vazio).
+- `attempts[].requests`: requisições de chat feitas na tentativa (a consulta de cota não conta).
+- `escalation`: `null` ou `{"at", "reason", "detail"}`, com `reason` igual a `attempts`, `quota`, `429` ou `no-key`.
+  Depois da escalada, a etapa segue com o `agent` do papel ou fica `needs_input`.
+
 ## Status das etapas
 | Status | Significado | O que fazer |
 |---|---|---|

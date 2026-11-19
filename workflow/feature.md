@@ -51,6 +51,8 @@ Marque cada item na ordem. Gate FAIL ou SKIP bloqueia o item seguinte; a mensage
 - [ ] Bloqueio: só começa com `gates.expect-red` e `testShas` gravados no estado.
 - [ ] Tirar o esboço da exclusão de cobertura.
 - [ ] Chamar **implementer** (skill `editar-arquivo`).
+      Com `roles.implementer.worker` no `harness.project.yaml`, a etapa pode ir para esse trabalhador pelo
+      adaptador [api-chat](../adapter/api-chat.md).
 - [ ] `pnpm gate tests-reviewed <feature>` → PASS (gate [testes-revisados](../gate/testes-revisados.md)).
       Teste alterado depois da revisão volta para a etapa 3.
 - [ ] `pnpm gate coverage <feature>` → PASS (gate [cobertura](../gate/cobertura.md)).

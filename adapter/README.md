@@ -7,5 +7,6 @@ O adaptador não muda o núcleo.
 | Adaptador | Ferramenta |
 |---|---|
 | [claude-code](claude-code.md) | Claude Code |
+| [api-chat](api-chat.md) | modelo por API de chat compatível com OpenAI, sem ferramentas (trabalhador de um papel) |
 
 Ferramenta nova ganha um arquivo aqui quando for usada.
