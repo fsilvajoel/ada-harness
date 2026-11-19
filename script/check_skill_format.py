@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Gate skill-format: toda skill é `<skill_dir>/<nome>/SKILL.md` com frontmatter válido.
 
-A pasta de skills é do projeto alvo (`skill_dir` no `harness.project.yaml`) e
-vem como argumento (nas mensagens abaixo, `skill/` abrevia esse diretório).
+A pasta de skills é a compartilhada do harness (`skill_dir` no `harness.project.yaml`, por padrão
+`skill/`) e vem como argumento (nas mensagens abaixo, `skill/` abrevia esse diretório).
 
 Regras (detalhes em `gate/skill-format.md`):
 

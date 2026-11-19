@@ -89,6 +89,16 @@ Um bloco por arquivo alterado. Texto fora dos blocos é ignorado.
 6. Só a partir da 2ª tentativa, `# Falha da tentativa anterior`: o motivo da rejeição ou as últimas 150 linhas
    da saída do comando que falhou.
 
+### Recursos para quem não tem ferramentas
+O trabalhador não lê arquivo, skill nem gate; ele só vê o pedido. Todo papel tem direito a todas as skills, gates e
+regras ([recursos-compartilhados](../capability/recursos-compartilhados.md)), então o **orquestrador pode incluir no
+`user`**, depois do item 3, uma seção `# Skills e regras` com o conteúdo (inteiro ou o trecho que serve) de qualquer
+`skill/<nome>/SKILL.md`, `gate/*.md`, `policy/*.md` ou capability de que o papel precisa naquela chamada, cada um entre
+`=== RECURSO: <caminho> ===` e `=== END RECURSO ===`. O executor não muda: o pedido já é um arquivo montado pelo
+orquestrador. Skill que manda usar ferramenta (ex.: `Edit`) não se aplica ao trabalhador; o orquestrador aplica a
+resposta e roda os gates por ele. O recurso incluído é somente leitura e não amplia a lista de arquivos que ele pode
+escrever.
+
 Nada de `key_file`, segredo ou arquivo fora dessa lista entra no pedido.
 
 ## Resposta

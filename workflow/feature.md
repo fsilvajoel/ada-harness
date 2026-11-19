@@ -9,6 +9,11 @@ O **orquestrador** é qualquer agente de IA. Ele segue esta lista, chama um [pap
 (como, depende do [adaptador](../adapter/README.md)), roda os gates e grava o estado. Os papéis não chamam uns
 aos outros.
 
+**Recursos compartilhados:** todo papel lê todas as skills ([skill/](../skill/README.md)), gates e policies e roda os
+comandos de verificação, qualquer que seja o papel da etapa anterior; a coluna abaixo é o escopo de escrita e a
+responsabilidade da etapa ([decisão](../capability/recursos-compartilhados.md)). No briefing de um trabalhador sem
+ferramentas, o orquestrador inclui o conteúdo necessário ([api-chat](../adapter/api-chat.md)).
+
 | Papel | Etapas |
 |---|---|
 | `planner` | plan |

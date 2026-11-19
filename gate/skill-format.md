@@ -4,7 +4,7 @@
 Garantir que toda skill seja descoberta pelo agente e siga o mesmo formato.
 
 ## Critério de sucesso (PASS)
-- a pasta de skills do projeto (`skill_dir` no `harness.project.yaml`) contém só pastas, `README.md`, `_modelo.md`
+- a pasta compartilhada de skills (`skill_dir` no `harness.project.yaml`, por padrão `skill/` do harness) contém só pastas, `README.md`, `_modelo.md`
   e a licença das skills de terceiros;
 - cada pasta tem `SKILL.md` com frontmatter (`---` no início e no fim);
 - o frontmatter tem `name` igual ao nome da pasta e `description` não vazia;

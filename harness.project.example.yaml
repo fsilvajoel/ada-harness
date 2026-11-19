@@ -1,7 +1,8 @@
 # Molde da configuração que o projeto alvo mantém na raiz dele, como `harness.project.yaml`.
 # Caminhos relativos à raiz do projeto. Troque os <...>.
 harness: <caminho até o harness>
-skill_dir: <pasta de skills do projeto>
+skill_dir: <pasta compartilhada de skills; por padrão <harness>/skill>
+skill_link: <caminho local que a ferramenta exige, link simbólico para skill_dir; omita se não precisa>
 
 # Idioma (policy/idioma.md).
 language:

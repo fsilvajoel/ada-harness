@@ -12,5 +12,9 @@ e mapeado em `roles` no `harness.project.yaml` do projeto. A definição de cada
 | `reviewer` | revisa os testes (skill revisar-teste) e o diff final; somente leitura | review-tests, final-review |
 | `implementer` | implementa até os testes revisados passarem; nunca altera teste revisado | implement |
 
+**Recursos:** a responsabilidade acima é o escopo de escrita. Todo papel lê todas as skills ([skill/](../skill/README.md)),
+gates, policies e moldes e roda os comandos de verificação ([decisão](../capability/recursos-compartilhados.md)); em
+caso excepcional faz trabalho de outro papel sem depender de quem fez a etapa anterior.
+
 O **orquestrador** é qualquer agente de IA que siga o checklist do workflow: chama os papéis, roda os gates e
 grava o estado. Não há outro papel.

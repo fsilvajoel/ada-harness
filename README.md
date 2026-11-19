@@ -10,6 +10,7 @@ alvo e não pertence a ele: tudo o que é do projeto (papéis, comandos, skills,
 |---|---|
 | `agent/` | papéis (planner, refiner, test-writer, reviewer, implementer) |
 | `adapter/` | como cada ferramenta de IA executa os papéis e as travas |
+| `skill/` | skills compartilhadas por todos os papéis (próprias e de terceiros) |
 | `capability/` | comportamentos que juntam skills, policies e gates |
 | `policy/` | regras globais (inclui [idioma](policy/idioma.md)) |
 | `workflow/` | sequência de etapas e passagens |
@@ -30,5 +31,5 @@ alvo e não pertence a ele: tudo o que é do projeto (papéis, comandos, skills,
 - Documentação em Markdown, em pt-BR ([policy/idioma.md](policy/idioma.md)).
 - Lógica de execução em `script/` (harness) e, por enquanto, em `scripts/` do projeto (gates, hook).
 - Ponto de entrada: o workflow [feature](workflow/feature.md), conduzido por qualquer agente de IA (orquestrador).
-- Skills ficam no projeto, na pasta `skill_dir` do `harness.project.yaml`; o harness cita só o nome delas.
+- Skills, gates, policies e moldes são **compartilhados**: ficam em [skill/](skill/README.md), `gate/` etc., e todo papel lê todos ([decisão](capability/recursos-compartilhados.md)). O `skill_dir` do `harness.project.yaml` aponta para `skill/`; o adaptador pode ligar um caminho local por link simbólico.
 - Configuração real do projeto no `harness.project.yaml` dele (papéis, comandos, checks, textos proibidos).
