@@ -27,6 +27,21 @@ plano, decidido no SDD) declara; o orquestrador só aponta o cartão e repassa o
   web): o refiner preenche (ex.: `react-best-practices#<regra>` pertinente) e o gate
   [card-skills](../../gate/card-skills.md) falha sem isso ou com item inexistente.
 
+### Tabela padrão: tipo de cartão → extras
+
+Padrão editável (exemplo, não regra fixa). Vale com o `role_skills` sugerido em [agent/README.md](../../agent/README.md):
+test-writer → `escrever-teste`, `revisar-teste`; implementer → `editar-arquivo`, `coding-guidelines`. Ao aplicar,
+**tire da linha o que o papel já injeta** em `role_skills` (não repetir); se o projeto tiver outra lista, ajuste a tabela.
+
+| Tipo de cartão | `skills:` extras |
+|---|---|
+| test-author, lib | nenhuma (`escrever-teste` já vem do papel) |
+| test-author, componente | `accessibility` |
+| implement, lib | nenhuma (`editar-arquivo` e `coding-guidelines` já vêm do papel) |
+| implement, componente | `react-best-practices` (índice) |
+| implement, formulário | `react-best-practices` e `react-best-practices#rerender-derived-state-no-effect` |
+| implement, lista/detalhe/tabela | `react-best-practices` e `react-best-practices#rendering-conditional-render` |
+
 ## Quem lê
 - Trabalhador **sem ferramentas** (api-chat, cli-agent): o executor inclui os recursos no pedido
   (`script/api_chat.py` e `script/cli_agent.py`, ambos com `--role <papel> --skills <itens do cartão>`;
