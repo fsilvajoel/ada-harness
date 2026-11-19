@@ -47,6 +47,18 @@ O agente nunca roda na pasta do projeto. Antes de cada tentativa, o orquestrador
 Os argumentos limitam o acesso da ferramenta à pasta corrente; a cópia é essa pasta. Nenhum segredo vai no briefing
 nem nos argumentos ([security](../policy/security.md)).
 
+## Executor
+`python3 <harness>/script/cli_agent.py <raiz do projeto> <trabalhador> --mode read|write --role <papel> [--skills
+<itens do cartão>] [--request ARQ] [--cwd <cópia de trabalho>] [--output ARQ] [--meta ARQ]`. Uma execução por
+chamada: lê `workers.<nome>`, confere `--role` contra `roles`, monta o briefing (pedido de `--request` ou do stdin
+mais o bloco `# Skills e regras` de `role_skills.<papel>` e `--skills`), roda `<command> <read_args|write_args>` em
+`--cwd` com o briefing no stdin, aplica `output_jq`/`usage_jq` (`jq -rs`) e devolve a resposta no stdout ou
+`--output`. Meta em JSON (stderr ou `--meta`): `status`, `mode`, `skills`, `usage`, `error`. Saídas: `0` ok; `2` uso ou
+configuração inválida (inclui papel fora de `roles`, skill inexistente e teto de skills, sem rodar o comando); `6`
+tentativa falha (saída diferente de 0, timeout, resposta vazia, jq inválido); `7` comando ausente (escala na hora).
+Tentativas, conferência da cópia, gates e escalada continuam com o orquestrador. O worker declara
+`executor: <caminho do cli_agent.py>` só como lembrete de qual script chamar.
+
 ## Chamada
 Na pasta da cópia: `<command> <read_args | write_args>`, com o briefing no **stdin** (sem limite de tamanho de
 argumento) e `timeout_s` como limite. Cada tentativa é uma execução nova, sem sessão anterior.
@@ -72,9 +84,9 @@ Montado pelo orquestrador, nesta ordem:
    briefing pelo harness, não escolhidas pelo orquestrador**, no mesmo contrato do
    [api-chat](api-chat.md#skills-e-regras-no-pedido): cada recurso entre `=== RECURSO: <caminho> ===` e
    `=== END RECURSO ===`, `nome` = só o `SKILL.md`, `nome#regra` = índice + `rules/<regra>.md`, nunca o `AGENTS.md`
-   compilado, sem repetição, erro claro se faltar recurso ou passar de `skills_max_bytes`. Não há executor próprio do
-   cli-agent: o bloco sai de `python3 <harness>/script/skill_inject.py <raiz do projeto> --role <papel> --skills <itens
-   do cartão>` (stdout) e é anexado ao briefing; o tamanho por recurso sai no stderr e vai para o registro. O agente
+   compilado, sem repetição, erro claro se faltar recurso ou passar de `skills_max_bytes`. O executor
+   [`script/cli_agent.py`](#executor) anexa o bloco ao briefing (mesma API do api-chat: `--role` e `--skills`); o
+   tamanho por recurso sai no stderr e no `skills` do meta, e vai para o registro. O agente
    também pode ler os arquivos na cópia de trabalho, mas não depende disso.
 8. Só a partir da 2ª tentativa, `# Falha da tentativa anterior`: o motivo da rejeição ou as últimas 150 linhas da
    saída do comando que falhou.
