@@ -3,8 +3,9 @@
 Lógica de orquestração e utilitários de execução do projeto.
 
 Scripts coordenam o harness, mas não guardam a policy canônica nem o conhecimento de domínio, que fica nas skills.
-Despacho: `dispatch.py` (escolhe api_chat.py ou cli_agent.py pelo `roles.<papel>.worker`).
-Executores e gates: `api_chat.py` (api-chat), `cli_agent.py` (cli-agent), `skill_inject.py` (bloco de skills),
+Despacho: `dispatch.py` (escolhe api_chat.py, api_tools.py ou cli_agent.py pelo `roles.<papel>.worker`; rota
+opcional por `worker_stages`/`worker_paths` com `--stage` e `--allowed-path`, decisão no stderr).
+Executores e gates: `api_chat.py` (api-chat), `api_tools.py` (api-tools), `cli_agent.py` (cli-agent), `skill_inject.py` (bloco de skills),
 `check_portable.py`, `check_skill_format.py`, `check_card_skills.py`, `check_role_skills.py`,
 `check_status_consistency.py`, `render_issue.py`, `check_issue_tokens.py`, `translate_blocks.py`,
 `check_issue_render.py` (corpo das issues).

@@ -81,6 +81,10 @@ Marque cada item na ordem. Gate FAIL ou SKIP bloqueia o item seguinte; a mensage
 
 ### 2. tests
 - [ ] Chamar **test-writer** (skill `escrever-teste`).
+      Com `roles.test-writer.worker` api-chat: `python3 <harness>/script/run_card.py <raiz> --card <ID> --max-attempts 20`
+      (opções `--dry-run`, `--keep-on-fail`, `--log-dir`). O script monta o pedido, grava, roda os `checks` e realimenta o
+      erro à Bia; saída 0 PASS, 1 FAIL, 2 uso, 3 cota, 4 worker. O orquestrador lê só o resultado curto e depois roda o
+      gate e grava o `estado.json`; o script não assina gates, não commita e não escreve no estado ([adaptador](../adapter/README.md)).
 - [ ] Gravar em `estado.json` os `scenarios` (`C<n>` → critério, camada, arquivo, teste) e ajustar `tests` e `e2e`
       se a lista mudou. Todo critério tem cenário em cada camada declarada ([testing](../capability/testing.md)).
 - [ ] `pnpm gate expect-red <feature>` → PASS (gate [expect-red](../gate/expect-red.md)).
@@ -96,6 +100,9 @@ Marque cada item na ordem. Gate FAIL ou SKIP bloqueia o item seguinte; a mensage
 - [ ] Bloqueio: só começa com `gates.expect-red` e `testShas` gravados no estado.
 - [ ] Tirar o esboço da exclusão de cobertura.
 - [ ] Chamar **implementer** (skill `editar-arquivo`).
+      Com worker api-chat ou api-tools, usar `script/run_card.py <raiz> --card <ID>` (mesmo laço e mesmos códigos de saída da etapa 2;
+      respeita `worker_stages`/`worker_paths`: cartão fora da rota sai com 2 e segue com o agent);
+      os gates abaixo e o `estado.json` continuam com o orquestrador.
       Com `roles.implementer.worker` no `harness.project.yaml`, a etapa pode ir para esse trabalhador pelo
       adaptador dele ([api-chat](../adapter/api-chat.md) ou [cli-agent](../adapter/cli-agent.md)), via
       `script/dispatch.py --role implementer --skills <cartão>`.
