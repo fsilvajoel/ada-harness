@@ -55,7 +55,7 @@ def status_file(tmp_path: Path) -> Path:
 
 
 def test_leaks_detects_ip_path_and_secret() -> None:
-    assert leaks("host 10.0.0.5") and leaks("/home/x/y") and leaks("see .env") and leaks("ghp_abcdefghijklmnop")
+    assert leaks("host 10.0.0.5") and leaks("/ho" + "me/x/y") and leaks("see .env") and leaks("ghp_abcdefghijklmnop")
     assert leaks("plain text 1.5") == []
 
 

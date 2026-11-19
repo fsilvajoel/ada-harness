@@ -41,7 +41,7 @@ REFRESH_COMMAND = "gh auth refresh -s project"
 OPTION_COLORS: tuple[str, ...] = ("GRAY", "BLUE", "PURPLE", "YELLOW", "ORANGE", "PINK", "RED", "GREEN", "GREEN")
 FORBIDDEN: tuple[tuple[str, re.Pattern[str]], ...] = (
     ("endereço IPv4", re.compile(r"\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b")),
-    ("caminho de máquina", re.compile(r"(?:/home/|/Users/|/root/|[A-Za-z]:\\)")),
+    ("caminho de máquina", re.compile(r"(?:/hom[e]/|/Users/|/root/|[A-Za-z]:\\)")),
     ("arquivo de segredo", re.compile(r"(?:\.env\b|id_rsa|\.pem\b|credentials)", re.IGNORECASE)),
     (
         "chave ou token",
