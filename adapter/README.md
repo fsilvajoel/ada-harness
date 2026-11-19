@@ -8,5 +8,6 @@ O adaptador não muda o núcleo.
 |---|---|
 | [claude-code](claude-code.md) | Claude Code |
 | [api-chat](api-chat.md) | modelo por API de chat compatível com OpenAI, sem ferramentas (trabalhador de um papel) |
+| [cli-agent](cli-agent.md) | agente de IA de linha de comando que edita arquivos numa cópia de trabalho (trabalhador de um papel) |
 
 Ferramenta nova ganha um arquivo aqui quando for usada.

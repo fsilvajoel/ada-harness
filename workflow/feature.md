@@ -43,7 +43,8 @@ Marque cada item na ordem. Gate FAIL ou SKIP bloqueia o item seguinte; a mensage
 
 ### 3. revisão dos testes
 - [ ] Chamar **reviewer** (skill `revisar-teste`); gravar a saída em
-      `revisao.md`.
+      `revisao.md`. Com `roles.reviewer.second_opinion`, rodar também a
+      [segunda opinião](../adapter/cli-agent.md#segunda-opinião) (vale igual na etapa 6).
 - [ ] Reprovado: voltar à etapa 2 com a lista do reviewer.
 - [ ] Aprovado: `pnpm gate tests-reviewed <feature> --sign` (grava `testShas`).
 
@@ -52,7 +53,7 @@ Marque cada item na ordem. Gate FAIL ou SKIP bloqueia o item seguinte; a mensage
 - [ ] Tirar o esboço da exclusão de cobertura.
 - [ ] Chamar **implementer** (skill `editar-arquivo`).
       Com `roles.implementer.worker` no `harness.project.yaml`, a etapa pode ir para esse trabalhador pelo
-      adaptador [api-chat](../adapter/api-chat.md).
+      adaptador dele ([api-chat](../adapter/api-chat.md) ou [cli-agent](../adapter/cli-agent.md)).
 - [ ] `pnpm gate tests-reviewed <feature>` → PASS (gate [testes-revisados](../gate/testes-revisados.md)).
       Teste alterado depois da revisão volta para a etapa 3.
 - [ ] `pnpm gate coverage <feature>` → PASS (gate [cobertura](../gate/cobertura.md)).

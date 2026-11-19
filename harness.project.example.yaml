@@ -14,15 +14,18 @@ roles:
   orchestrator: {agent: null}
   planner: {agent: <definição do papel>}
   test-writer: {agent: <definição do papel>}
-  reviewer: {agent: <definição do papel>}
+  reviewer: {agent: <definição do papel>, second_opinion: <nome do trabalhador cli-agent (opcional)>}
   implementer: {agent: <definição do papel>, worker: <nome do trabalhador (opcional)>}
 
-# Trabalhadores (adapter/api-chat.md): modelos por API de chat, sem ferramentas. Um mapa em linha por trabalhador.
-# A chave só existe no ambiente do orquestrador (key_env), carregada pelo humano a partir de key_file; nunca aqui.
+# Trabalhadores: um mapa em linha por trabalhador.
+# api-chat (adapter/api-chat.md): modelo por API de chat, sem ferramentas. A chave só existe no ambiente do
+# orquestrador (key_env), carregada pelo humano a partir de key_file; nunca aqui.
+# cli-agent (adapter/cli-agent.md): agente de linha de comando que roda numa cópia de trabalho.
 workers:
   <nome>: {adapter: api-chat, base_url: "<url da API>", model: "<modelo>", key_env: <VARIAVEL_DA_CHAVE>, key_file: <arquivo de segredos>, quota_url: "<url da consulta de cota>", quota_remaining: "<caminho jq das requisições restantes>", quota_reserve: <folga mínima>, max_attempts: 6, timeout_s: <segundos>}
+  <outro nome>: {adapter: cli-agent, command: <programa>, read_args: "<argumentos do modo leitura>", write_args: "<argumentos do modo escrita>", output_jq: "<filtro jq da resposta final (opcional)>", usage_jq: "<filtro jq do consumo (opcional)>", roles: "<papéis permitidos>", max_attempts: 6, timeout_s: <segundos>}
 
-# Arquivos de regras (tipagem, lint) que entram no pedido do trabalhador, por papel.
+# Arquivos de regras (tipagem, lint) que entram no pedido ou no briefing do trabalhador, por papel.
 role_context:
   implementer:
     - <arquivo de regras do projeto>

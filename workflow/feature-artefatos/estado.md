@@ -67,8 +67,8 @@ Caminhos sempre relativos à raiz do repositório. Listas são de texto, sem rep
   Nomes: `expect-red`, `tests-reviewed`, `coverage`, `mutation`, `e2e`.
 
 ## Trabalhador
-Quando a etapa vai para um trabalhador ([adaptador api-chat](../../adapter/api-chat.md)), o orquestrador grava em
-`stages.<etapa>`:
+Quando a etapa vai para um trabalhador ([api-chat](../../adapter/api-chat.md) ou
+[cli-agent](../../adapter/cli-agent.md)), o orquestrador grava em `stages.<etapa>`:
 
 ```json
 "implement": {
@@ -90,6 +90,11 @@ Quando a etapa vai para um trabalhador ([adaptador api-chat](../../adapter/api-c
 - `attempts[].requests`: requisições de chat feitas na tentativa (a consulta de cota não conta).
 - `escalation`: `null` ou `{"at", "reason", "detail"}`, com `reason` igual a `attempts`, `quota`, `429` ou `no-key`.
   Depois da escalada, a etapa segue com o `agent` do papel ou fica `needs_input`.
+- cli-agent: `model`, `requests` e tokens só quando a ferramenta informa; `attempts[].usage` guarda o que o
+  `usage_jq` extrair. `escalation.reason` pode ser também `tool` (comando ausente, sem login, limite de uso) ou
+  `outside-copy` (projeto alterado fora da cópia de trabalho).
+- Segunda opinião do reviewer: o mesmo registro em `stages.testReview.secondOpinion` ou
+  `stages.review.secondOpinion`, com o `verdict` dela.
 
 ## Status das etapas
 | Status | Significado | O que fazer |
