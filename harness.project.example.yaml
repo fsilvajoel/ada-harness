@@ -52,6 +52,9 @@ skills_required_paths:
 # Teto (bytes) do bloco de skills e regras injetado no pedido (padrão 40000); acima dele o executor falha.
 skills_max_bytes: 40000
 
+# Arquivo gerado pelo comando status (script/status.py); padrão status.json na raiz do projeto.
+status_file: status.json
+
 # Fila de pendências de PM do refinamento funcional (workflow/feature.md, etapa 1b): um arquivo único.
 pm_queue: <arquivo da fila>
 
