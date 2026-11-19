@@ -51,6 +51,11 @@ Marque cada item na ordem. Gate FAIL ou SKIP bloqueia o item seguinte; a mensage
       regras com fonte, entradas e saídas exatas, erros, dependências e contrato; (b) todo cartão com DoR (o que
       precisa existir antes: dependências, arquivos a ler, caminhos permitidos) e DoD (como se prova pronto: itens
       e checks) claros, verificáveis e coerentes com o plano.
+- [ ] **Skills do cartão:** todo cartão cujo `allowedPaths` toca um caminho de `skills_required_paths` (ex.: o app
+      web) sai com `skills:` preenchido (`nome` ou `nome#regra` pertinente à tarefa, ex.: `react-best-practices#<regra>`),
+      conforme o [formato do cartão](feature-artefatos/cartao.md). Gate [card-skills](../gate/card-skills.md)
+      (`script/check_card_skills.py`) confere presença e existência; o gate
+      [role-skills](../gate/role-skills.md) confere que `role_skills` e os moldes dos papéis não divergem.
 - [ ] O que não depende de decisão de produto ele **completa sozinho**, no plano e nos cartões da feature:
       critério faltante, caso de erro que os docs aprovados já definem, DoR/DoD incompletos, `refs`, arquivos a
       ler, checks. Sempre com fonte num doc aprovado; regra de negócio nova nunca é inventada.

@@ -23,10 +23,13 @@ plano, decidido no SDD) declara; o orquestrador só aponta o cartão e repassa o
   Só esses dois tipos de arquivo entram: o `AGENTS.md` compilado de uma skill **nunca** é injetado (peso).
 - Sem `skills`, vale só a lista do papel. Item repetido, ou que já está na lista do papel, entra uma vez.
 - Skill ou regra inexistente é erro claro, não é ignorada.
+- **Obrigatório** em cartão cujo `allowedPaths` toca um caminho de `skills_required_paths` do projeto (ex.: o app
+  web): o refiner preenche (ex.: `react-best-practices#<regra>` pertinente) e o gate
+  [card-skills](../../gate/card-skills.md) falha sem isso ou com item inexistente.
 
 ## Quem lê
 - Trabalhador **sem ferramentas** (api-chat, cli-agent): o executor inclui os recursos no pedido
-  (`script/api_chat.py --role <papel> --skills <itens do cartão>`; `script/skill_inject.py` imprime o mesmo bloco
-  para o cli-agent). Detalhes e teto de tamanho em [api-chat](../../adapter/api-chat.md#skills-e-regras-no-pedido).
+  (`script/api_chat.py` e `script/cli_agent.py`, ambos com `--role <papel> --skills <itens do cartão>`;
+  `script/skill_inject.py` imprime o mesmo bloco). Detalhes e teto de tamanho em [api-chat](../../adapter/api-chat.md#skills-e-regras-no-pedido).
 - Agente **com ferramentas** (Claude Code): o molde do papel manda ler as do papel e as do campo `skills` do cartão
   antes de começar.
