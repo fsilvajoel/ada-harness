@@ -20,7 +20,7 @@ roles:
 # Trabalhadores (adapter/api-chat.md): modelos por API de chat, sem ferramentas. Um mapa em linha por trabalhador.
 # A chave só existe no ambiente do orquestrador (key_env), carregada pelo humano a partir de key_file; nunca aqui.
 workers:
-  <nome>: {adapter: api-chat, base_url: "<url da API>", model: "<modelo>", key_env: <VARIAVEL_DA_CHAVE>, key_file: <arquivo de segredos>, quota_url: "<url da consulta de cota>", quota_remaining: "<caminho jq das requisições restantes>", quota_reserve: <folga mínima>, max_attempts: 3, timeout_s: <segundos>}
+  <nome>: {adapter: api-chat, base_url: "<url da API>", model: "<modelo>", key_env: <VARIAVEL_DA_CHAVE>, key_file: <arquivo de segredos>, quota_url: "<url da consulta de cota>", quota_remaining: "<caminho jq das requisições restantes>", quota_reserve: <folga mínima>, max_attempts: 6, timeout_s: <segundos>}
 
 # Arquivos de regras (tipagem, lint) que entram no pedido do trabalhador, por papel.
 role_context:

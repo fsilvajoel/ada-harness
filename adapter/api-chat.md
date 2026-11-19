@@ -12,7 +12,7 @@ e roda os gates. **Quem aprova é o gate, nunca a palavra do modelo.**
 ## Configuração (no `harness.project.yaml` do projeto)
 - `workers.<nome>`: `adapter: api-chat`, `base_url`, `model`, `key_env` (variável de ambiente com a chave),
   `key_file` (de onde o humano carrega a chave), `quota_url` e `quota_remaining` (caminho jq até as requisições
-  restantes no dia), `quota_reserve` (folga mínima), `max_attempts` (padrão 3) e `timeout_s`.
+  restantes no dia), `quota_reserve` (folga mínima), `max_attempts` (padrão 6) e `timeout_s`.
 - `roles.<papel>.worker: <nome>`: o papel pode ser executado por esse trabalhador. Sem a chave, o papel segue
   com o `agent` de sempre.
 - `role_context.<papel>`: arquivos do projeto com as regras de tipagem e lint que vão no pedido.
