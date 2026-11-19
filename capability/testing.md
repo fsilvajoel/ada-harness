@@ -28,6 +28,8 @@ não se aplica):
 - [ ] limite + 1 (logo fora do mínimo e do máximo)
 - [ ] muito grande (além do inteiro seguro da linguagem, texto longo)
 - [ ] caractere inválido (letra, símbolo, caractere de controle)
+- [ ] caractere não ASCII em texto ordenado ou paginado (ex.: sigma final `Σ`, `İ`, acento): a chave de ordenação que o
+      cursor guarda vem do próprio banco, e o teste pagina de 1 em 1 conferindo que ninguém repete nem some
 
 Cada entrada do plano tem ao menos um caso de rejeição com o erro esperado exato.
 
