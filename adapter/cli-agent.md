@@ -8,6 +8,8 @@ Diferença para o [api-chat](api-chat.md): lá o orquestrador aplica a resposta 
 e o orquestrador só traz de volta o que está no escopo do papel.
 
 ## Escopo
+- Papel `plan-reviewer` (revisão do plano), em **modo leitura**: o parecer volta pelo stdout no
+  [molde](../workflow/feature-artefatos/revisao-plano.md).
 - Papel `reviewer` (revisão dos testes e revisão final), em **modo leitura**: não edita arquivo nenhum; o relatório
   volta pelo stdout no formato que o papel já usa.
 - Papel `implementer` (etapa 4 do [workflow feature](../workflow/feature.md)), em **modo escrita**, nas mesmas
@@ -27,6 +29,7 @@ e o orquestrador só traz de volta o que está no escopo do papel.
     para o trabalhador;
   - `max_attempts` (padrão 6) e `timeout_s`.
 - `roles.implementer.worker: <nome>`: a etapa implement pode ir para esse trabalhador (como no api-chat).
+- `roles.plan-reviewer.worker: <nome>`: a revisão do plano vai para esse trabalhador, em modo leitura.
 - `roles.reviewer.second_opinion: <nome>`: além do `agent` do reviewer, que continua rodando, esse trabalhador faz
   uma **segunda revisão** nas mesmas etapas ([Segunda opinião](#segunda-opinião)).
 - `role_context.<papel>`: arquivos do projeto com regras que o briefing manda ler.
@@ -51,11 +54,14 @@ Montado pelo orquestrador, nesta ordem:
 2. `# Papel`: o texto da definição do papel (`roles.<papel>.agent`), com a regra de que, em modo leitura, não se
    cria, edita nem apaga arquivo e não se roda comando.
 3. `# Regras do projeto`: os caminhos de `role_context.<papel>`, para ler na cópia.
-4. `# Feature`: caminho de `plano.md`, `estado.json`, `tests` e `e2e` na cópia.
+4. `# Feature`: caminho de `plano.md`, `estado.json`, `tests` e `e2e` na cópia; na revisão do plano, também o
+   arquivo dos cartões citado no plano e os IDs deles.
 5. Revisão: `# Gates`, o último resultado de cada gate no `estado.json` (o agente não roda comando); só na revisão
    final, `# Diff`, a saída de `git diff` da feature. Por fim, `# Saída`: o molde do registro
    ([testes](../workflow/feature-artefatos/auditoria.md) ou [final](../workflow/feature-artefatos/revisao-final.md)),
-   a devolver inteiro no stdout com o veredito.
+   a devolver inteiro no stdout com o veredito. Na revisão do plano: só `# Saída`, com o
+   [molde do plano](../workflow/feature-artefatos/revisao-plano.md) e a rodada (1 ou 2); na rodada 2, também os
+   achados da rodada 1.
 6. Implementer: `# Arquivos que você pode escrever`, a lista de `sources`, e a regra de que teste é somente leitura.
 7. Só a partir da 2ª tentativa, `# Falha da tentativa anterior`: o motivo da rejeição ou as últimas 150 linhas da
    saída do comando que falhou.

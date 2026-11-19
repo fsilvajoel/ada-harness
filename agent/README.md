@@ -7,6 +7,7 @@ e mapeado em `roles` no `harness.project.yaml` do projeto. A definição de cada
 | Papel | Responsabilidade | Etapa do [workflow feature](../workflow/feature.md) |
 |---|---|---|
 | `planner` | escopo, contrato, critérios de aceite (A<n>) e cenários (C<n>); não escreve código | plan |
+| `plan-reviewer` | confere se o plano e os cartões (DoR e DoD) bastam para testar e implementar; somente leitura | plan-review |
 | `test-writer` | testes antes do código (skill escrever-teste); não toca código de produção | tests |
 | `reviewer` | revisa os testes (skill revisar-teste) e o diff final; somente leitura | review-tests, final-review |
 | `implementer` | implementa até os testes revisados passarem; nunca altera teste revisado | implement |

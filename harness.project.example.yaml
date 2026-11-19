@@ -13,6 +13,7 @@ language:
 roles:
   orchestrator: {agent: null}
   planner: {agent: <definição do papel>}
+  plan-reviewer: {agent: <definição do papel>, worker: <nome do trabalhador cli-agent em modo leitura (opcional)>}
   test-writer: {agent: <definição do papel>}
   reviewer: {agent: <definição do papel>, second_opinion: <nome do trabalhador cli-agent (opcional)>}
   implementer: {agent: <definição do papel>, worker: <nome do trabalhador (opcional)>}
@@ -28,6 +29,8 @@ workers:
 # Arquivos de regras (tipagem, lint) que entram no pedido ou no briefing do trabalhador, por papel.
 role_context:
   implementer:
+    - <arquivo de regras do projeto>
+  plan-reviewer:
     - <arquivo de regras do projeto>
 
 # Comandos de verificação. Workflows, skills e gates citam a chave (commands.test etc.), nunca o comando.

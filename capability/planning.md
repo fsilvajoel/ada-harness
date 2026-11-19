@@ -6,8 +6,8 @@ Definir escopo, domínio das entradas, critérios de aceite, cenários e contrat
 ## Composição
 - papel: `planner`
 - policy: [quality](../policy/quality.md)
-- gate: o orquestrador confere o plano (regras abaixo) antes da etapa tests; o `reviewer` reprova critério vago
-  na revisão dos testes
+- gate: o `plan-reviewer` confere o plano (regras abaixo) e os cartões antes da etapa tests; o `reviewer`
+  reprova critério vago na revisão dos testes
 - artefato: [plano.md](../workflow/feature-artefatos/plano.md)
 - workflow: [feature](../workflow/feature.md), etapa plan
 

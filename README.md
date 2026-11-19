@@ -8,7 +8,7 @@ alvo e não pertence a ele: tudo o que é do projeto (papéis, comandos, skills,
 
 | Pasta | Conteúdo |
 |---|---|
-| `agent/` | papéis (planner, test-writer, reviewer, implementer) |
+| `agent/` | papéis (planner, plan-reviewer, test-writer, reviewer, implementer) |
 | `adapter/` | como cada ferramenta de IA executa os papéis e as travas |
 | `capability/` | comportamentos que juntam skills, policies e gates |
 | `policy/` | regras globais (inclui [idioma](policy/idioma.md)) |

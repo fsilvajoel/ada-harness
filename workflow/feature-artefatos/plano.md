@@ -3,6 +3,8 @@
 ## Escopo
 <o que entra; o que fica de fora; arquivos criados ou alterados>
 
+Cartões: `<arquivo dos cartões da feature e IDs, ou "nenhum">`
+
 ## Contrato
 - `<arquivo>`: `<assinatura exata>`
 

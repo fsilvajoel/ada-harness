@@ -12,13 +12,14 @@ aos outros.
 | Papel | Etapas |
 |---|---|
 | `planner` | plan |
+| `plan-reviewer` | revisão do plano (somente leitura) |
 | `test-writer` | tests |
 | `reviewer` | revisão dos testes, revisão final (somente leitura) |
 | `implementer` | implement |
 
 ## Pasta da feature
 Tudo da feature fica em `docs/plano/<feature>/` (moldes em [feature-artefatos/](feature-artefatos/README.md)):
-`plano.md`, `testes.md`, `revisao.md` e `estado.json` ([formato](feature-artefatos/estado.md)).
+`plano.md`, `testes.md`, `revisao.md` (revisão do plano, dos testes e final) e `estado.json` ([formato](feature-artefatos/estado.md)).
 
 ## Lista do orquestrador
 Marque cada item na ordem. Gate FAIL ou SKIP bloqueia o item seguinte; a mensagem do gate diz o que falta.
@@ -34,6 +35,22 @@ Marque cada item na ordem. Gate FAIL ou SKIP bloqueia o item seguinte; a mensage
       da cobertura enquanto não for implementado.
 - [ ] Criar `estado.json` com `feature`, `sources`, `domainSources`, `criteria` (`A<n>` → camadas), `tests`, `e2e`
       (caminhos dos testes previstos; `[]` se não há critério e2e) e `stages.plan = done`.
+
+### 1b. revisão do plano
+- [ ] Chamar **plan-reviewer** (somente leitura) com `plano.md`, `estado.json` e os cartões que o plano cita.
+      Com `roles.plan-reviewer.worker`, a etapa vai para esse trabalhador em modo leitura
+      ([cli-agent](../adapter/cli-agent.md)).
+- [ ] O plan-reviewer confere: (a) requisitos completos para escrever os testes e implementar: todo `A<n>`
+      observável, regras com fonte, entradas e saídas exatas, erros, dependências e contrato; (b) todo cartão
+      com DoR (o que precisa existir antes: dependências, arquivos a ler, caminhos permitidos) e DoD (como se
+      prova pronto: itens e checks) claros, verificáveis e coerentes com o plano.
+- [ ] Gravar o parecer no início de `revisao.md` ([molde](feature-artefatos/revisao-plano.md)) e
+      `stages.planReview` no estado, com `verdict` e `round`.
+- [ ] Reprovado: voltar à etapa 1 com a lista de achados; o planner corrige plano e cartões. `needs_input`:
+      perguntar ao humano e corrigir com a resposta.
+- [ ] Uma revisão por feature e, depois da correção, **no máximo uma reavaliação** (`round` 2). Reprovado de novo
+      = `needs_input`.
+- [ ] Bloqueio: a etapa 2 só começa com `stages.planReview.verdict = aprovado`.
 
 ### 2. tests
 - [ ] Chamar **test-writer** (skill `escrever-teste`).
