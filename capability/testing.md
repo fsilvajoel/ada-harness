@@ -36,7 +36,8 @@ Regras da dispensa:
 - arquivo com `if`, cálculo, validação ou estado que muda a saída não é dispensável: extraia a lógica para um
   arquivo `tdd` e dispense só o que sobra;
 - componente de biblioteca alterado (prop nova, comportamento novo) volta a `tdd`;
-- toda feature tem ao menos um arquivo `tdd`;
+- toda feature tem ao menos um arquivo `tdd`; sem nenhum, não é feature: é tarefa fora do fluxo, só com revisão
+  visual ([workflows](../workflow/README.md));
 - um fluxo crítico do PRD tem `e2e` mesmo quando as telas dele são dispensadas;
 - o `reviewer` confere cada motivo; motivo vago ("é simples", "é só tela") é FAIL.
 
