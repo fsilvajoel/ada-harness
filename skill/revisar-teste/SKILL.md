@@ -34,8 +34,12 @@ implementação errada; a revisão é o que impede isso.
    dá FAIL nisso.
 7. **Bordas.** Checklist de bordas ([testing](../../capability/testing.md#checklist-de-bordas))
    preenchido por entrada; ao menos uma rejeição por entrada, com o erro exato.
-8. **Proteções.** O arquivo de implementação (esboço) não foi tocado por quem escreveu o teste.
-9. Devolva a revisão no formato abaixo; o orquestrador grava em `docs/plano/<feature>/revisao.md`.
+8. **Classificação e contrato.** Toda dispensa de TDD tem motivo concreto e o arquivo não tem condição, cálculo
+   nem validação ([classificação](../../capability/testing.md#classificação-tdd)); motivo vago reprova. O primeiro
+   cenário prova o contrato. Teste que olha estrutura (classe de estilo, nome interno, ordem de chamadas) em vez
+   de comportamento reprova.
+9. **Proteções.** O arquivo de implementação (esboço) não foi tocado por quem escreveu o teste.
+10. Devolva a revisão no formato abaixo; o orquestrador grava em `docs/plano/<feature>/revisao.md`.
 
 ## Formato
 

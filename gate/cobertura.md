@@ -17,6 +17,9 @@ de outras features ainda em esboço (o teste vem antes do código) não travam a
 - exige 100% de linhas, ramos, funções e statements em cada arquivo (limites passados na linha de comando e
   conferidos arquivo a arquivo no `coverage-summary.json`).
 
+Arquivo em `exemptSources` (dispensa declarada no plano, com motivo) não é medido; ele não pode estar também em
+`sources`.
+
 Resultado em `gates.coverage`.
 
 ## Critério de sucesso (PASS)
@@ -25,6 +28,7 @@ relatório e cada arquivo de produção da feature aparece no relatório de cobe
 nas quatro métricas.
 
 ## Critério de falha (FAIL)
+- arquivo em `sources` e em `exemptSources` ao mesmo tempo; dispensa sem `reason`;
 - `sources` presente mas vazio, ou com arquivo inexistente ou fora de um pacote com testes da feature;
 - sem `sources`: arquivo de produção deduzido inexistente, ou teste sem o padrão `.test.<ext>`;
 - nenhum teste executado; teste falhando; teste pulado ou `todo` (**pular é FAIL**);

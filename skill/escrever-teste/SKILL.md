@@ -34,10 +34,14 @@ implementação e tem de falhar contra o esboço; se passar sem implementação,
 7. **Camada declarada.** Cada critério recebe teste em cada camada do plano: `unit` (exemplo exato), `prop`
    (propriedade com fast-check, obrigatória em parser e cálculo), `e2e` (Playwright, arquivo em `e2e` do estado).
    A camada `mut` é provada pelo gate [mutacao](../../gate/mutacao.md) sobre os testes `unit` e `prop`.
-8. **Escreva só no arquivo de teste.** O arquivo de implementação (esboço criado pelo orquestrador) fica intocado.
-9. **Expect-red.** Rode `pnpm gate expect-red <feature>` contra o esboço: todos os testes novos falham
+8. **Contrato primeiro, comportamento sempre.** O primeiro cenário prova o contrato (forma da entrada e da saída).
+   Teste o que quem chama observa; nunca classe de estilo, estrutura interna ou ordem de chamadas
+   ([princípios](../../capability/testing.md#princípios)). Arquivo dispensado no plano (`exemptSources`) não
+   recebe teste; lógica dentro dele é erro do plano: devolva ao orquestrador.
+9. **Escreva só no arquivo de teste.** O arquivo de implementação (esboço criado pelo orquestrador) fica intocado.
+10. **Expect-red.** Rode `pnpm gate expect-red <feature>` contra o esboço: todos os testes novos falham
    pela asserção ou pelo erro do esboço, não por sintaxe, import ou tipo (gate [expect-red](../../gate/expect-red.md)).
-10. Registre arquivo, cenários (com camada), checklist de bordas e resultado em [testes.md](../../workflow/feature-artefatos/testes.md).
+11. Registre arquivo, cenários (com camada), classificação, checklist de bordas e resultado em [testes.md](../../workflow/feature-artefatos/testes.md).
 
 ## Limitações
 
@@ -54,6 +58,8 @@ implementação e tem de falhar contra o esboço; se passar sem implementação,
   máximo + 1, cada um com o erro exato do plano.
 - Ruim: só exemplos num parser. Bom: um teste `prop` que gera textos fora do formato e exige a rejeição.
 - Ruim: `const caso = JSON.parse(JSON.stringify(base))`. Bom: `const caso = structuredClone(base)`.
+- Ruim: conferir que o botão tem a classe de cor certa. Bom: conferir que o botão some quando o valor passa do
+  limite (a regra extraída para um hook ou schema, testada sem layout).
 - Ruim: abrir o arquivo de implementação para "ver o que ele retorna". Bom: tirar o retorno do contrato no plano.
 - Exemplo de esboço contra o qual o teste deve falhar:
 

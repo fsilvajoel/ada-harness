@@ -5,6 +5,18 @@
 | C1 | A1 | unit | <caminho> | <nome do teste> |
 | C2 | A1 | prop | <caminho> | <nome do teste> |
 
+O primeiro cenário prova o contrato do plano. Teste de comportamento, não de estrutura
+([princípios](../../capability/testing.md#princípios)).
+
+## Classificação
+Uma linha por arquivo de produção do plano ([classificação TDD](../../capability/testing.md#classificação-tdd)).
+Os `tdd` têm cenário acima; os dispensados vão para `exemptSources` e não têm teste.
+
+| Arquivo de produção | Teste | Cenários ou motivo |
+|---|---|---|
+| `<caminho>` | tdd | C1, C2 |
+| `<caminho>` | dispensa-estilo / dispensa-biblioteca | <motivo; revisão visual no navegador> |
+
 ## Checklist de bordas
 Por entrada da tabela de domínio do plano ([checklist](../../capability/testing.md#checklist-de-bordas)): cenário
 que cobre cada item, ou o motivo de não se aplicar.

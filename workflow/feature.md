@@ -34,13 +34,15 @@ Marque cada item na ordem. Gate FAIL ou SKIP bloqueia o item seguinte; a mensage
 ### 1. plan
 - [ ] Chamar **planner** com o ID da feature.
 - [ ] Conferir `plano.md` pelas [regras do plano](../capability/planning.md#regras-do-plano): escopo, contrato
-      (arquivo + assinatura), arquivos de produção com a marca de domínio, tabela de domínio de toda entrada
+      (arquivo + assinatura), arquivos de produção com a marca de domínio e a classificação TDD (dispensa só com
+      motivo, [regras](../capability/testing.md#classificação-tdd)), tabela de domínio de toda entrada
       externa (formato, mínimo, máximo, exemplos rejeitados, erro esperado, fonte), todo `A<n>` no molde fixo com
       `camada`, todo `C<n>` com valor esperado de fonte citada e ao menos uma rejeição por entrada, arquivos de
       teste previstos. Critério vago ou pendência (inclusive no domínio) = parar e perguntar.
 - [ ] Criar o **esboço** do contrato (assinaturas que lançam `Error("esboço: não implementado")`) e excluí-lo
       da cobertura enquanto não for implementado.
-- [ ] Criar `estado.json` com `feature`, `sources`, `domainSources`, `criteria` (`A<n>` → camadas), `tests`, `e2e`
+- [ ] Criar `estado.json` com `feature`, `sources`, `domainSources`, `exemptSources`
+      (dispensas com motivo, `[]` se nenhuma), `criteria` (`A<n>` → camadas), `tests`, `e2e`
       (caminhos dos testes previstos; `[]` se não há critério e2e) e `stages.plan = done`.
 
 ### 1b. refinamento funcional

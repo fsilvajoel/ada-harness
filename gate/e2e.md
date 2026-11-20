@@ -14,6 +14,8 @@ Resultado em `gates.e2e`.
 - todos os testes de `e2e` rodam e passam, nenhum pulado, e cada cenário de camada `e2e` aparece no relatório; ou
 - `e2e` vazio e nenhum critério com a camada `e2e` (nada a rodar; o detalhe diz isso).
 
+Dispensa de TDD numa tela (`exemptSources`) não dispensa o e2e do fluxo do PRD que passa por ela.
+
 ## Critério de falha (FAIL)
 - `e2e` ausente, ou vazio com algum critério de camada `e2e`;
 - arquivo de `e2e` inexistente;

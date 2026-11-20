@@ -6,15 +6,20 @@
 Cartões: `<arquivo dos cartões da feature e IDs, ou "nenhum">`
 
 ## Contrato
-- `<arquivo>`: `<assinatura exata>`
+Vem antes da regra de negócio; o primeiro cenário prova o contrato
+([princípios](../../capability/testing.md#princípios)).
+
+- `<arquivo>`: `<assinatura exata, schema ou payload>`
 
 ## Arquivos de produção
-Viram `sources` no [estado](estado.md); os marcados como domínio viram `domainSources` (gate
-[mutacao](../../gate/mutacao.md)). Domínio = regra de negócio ou cálculo; tela, adaptador e cola não são domínio.
+Os `tdd` viram `sources` no [estado](estado.md); os `tdd` marcados como domínio viram `domainSources` (gate
+[mutacao](../../gate/mutacao.md)); os dispensados viram `exemptSources`. Domínio = regra de negócio ou cálculo;
+tela, adaptador e cola não são domínio. Classificação e regras da dispensa:
+[testing](../../capability/testing.md#classificação-tdd).
 
-| Arquivo | Domínio |
-|---|---|
-| `<caminho do arquivo de produção>` | sim/não |
+| Arquivo | Domínio | Teste | Motivo |
+|---|---|---|---|
+| `<caminho do arquivo de produção>` | sim/não | tdd / dispensa-estilo / dispensa-biblioteca | <obrigatório na dispensa; "-" no tdd> |
 
 ## Domínio das entradas
 Uma linha por entrada externa (campo de tela, parâmetro de API, arquivo lido, variável de ambiente). Texto vago

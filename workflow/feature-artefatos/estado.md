@@ -17,6 +17,8 @@ nos campos `gates` e `testShas`). Os outros papéis não editam este arquivo.
   },
   "sources": ["<pacote>/src/log/redact.ts", "<pacote>/src/log/redact-form.ts"],
   "domainSources": ["<pacote>/src/log/redact.ts"],
+  "exemptSources": [{"file": "<pacote>/src/log/redact-layout.tsx", "class": "dispensa-estilo",
+                     "reason": "só grade e espaçamento; nenhuma condição"}],
   "criteria": [
     {"id": "A1", "camadas": ["unit", "prop", "mut"]},
     {"id": "A2", "camadas": ["e2e"]}
@@ -52,6 +54,9 @@ Caminhos sempre relativos à raiz do repositório. Listas são de texto, sem rep
   [cobertura](../../gate/cobertura.md) mede. Ausente = estado antigo (o gate cai na regra do nome).
 - `domainSources`: `string[]`, subconjunto de `sources` com regra de negócio ou cálculo (coluna "Domínio" do
   plano). É o que o gate [mutacao](../../gate/mutacao.md) mede. `[]` quando a feature não tem arquivo de domínio.
+- `exemptSources`: `{file, class: "dispensa-estilo" | "dispensa-biblioteca", reason}[]`, arquivos de produção
+  dispensados de TDD (coluna "Teste" do plano, [classificação](../../capability/testing.md#classificação-tdd)).
+  Não cruza com `sources`; `reason` não vazio. Cobertura e mutação não os medem. `[]` quando não há dispensa.
 - `criteria`: `{id: "A<n>", camadas: ("unit" | "prop" | "e2e" | "mut")[]}[]`, um item por critério do plano, com
   as camadas declaradas nele. `camadas` não é vazia.
 - `tests`: `string[]`, arquivos de teste unitário e de propriedade da feature. É a lista que expect-red,

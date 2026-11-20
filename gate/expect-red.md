@@ -11,6 +11,9 @@ listados em `tests` do [estado](../workflow/feature-artefatos/estado.md) e grava
 ## Critério de sucesso (PASS)
 Todo arquivo listado existe, executou ao menos um teste e **todos** os testes falharam (contra o esboço).
 
+Arquivo em `exemptSources` (dispensa declarada no plano) não tem teste e não entra aqui; a feature ainda precisa
+de ao menos um arquivo `tdd` com teste em `tests` ([classificação](../capability/testing.md#classificação-tdd)).
+
 ## Critério de falha (FAIL)
 - estado ausente ou sem `tests`; arquivo listado inexistente ou fora de pacote;
 - vitest sem relatório; arquivo sem nenhum teste executado (erro de import ou sintaxe);

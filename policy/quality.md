@@ -11,3 +11,6 @@ Garantir que o resultado seja testável, revisável e coerente com o plano.
 - Preservar o contrato funcional; não inventar comportamento fora dos critérios de aceite.
 - Corrigir os próprios erros (lint, tipo, import) antes de passar adiante.
 - Critério de aceite é frase verificável.
+- **Contrato antes da regra.** Payload ou assinatura muda primeiro no contrato e no teste do contrato
+  ([testing](../capability/testing.md#princípios)).
+- **Dispensa de teste só declarada.** Arquivo sem TDD tem classificação e motivo no plano; nunca por omissão.

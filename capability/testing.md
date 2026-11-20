@@ -13,6 +13,36 @@ Definir e validar o comportamento esperado em testes antes de a implementação 
   [auditoria](../gate/auditoria.md)
 - artefatos: [testes.md](../workflow/feature-artefatos/testes.md), [auditoria.md](../workflow/feature-artefatos/auditoria.md)
 
+## Princípios
+- **Contrato primeiro.** Toda feature começa pelo contrato (assinatura, schema ou payload, na seção Contrato do
+  plano) e pelo teste que prova o contrato. A regra de negócio vem depois. Mudar payload sem atualizar o contrato
+  e o teste do contrato é FAIL na revisão.
+- **Comportamento, não estrutura.** O teste verifica o que o usuário ou quem chama observa (saída, erro, texto,
+  estado visível). Não verifica classe CSS, estrutura de componente, nome de função interna ou ordem de chamadas.
+- **Lógica isolada.** Regra, cálculo, validação e exibição condicional saem da tela para uma função, hook ou
+  schema que se testa sem renderizar layout. A tela só monta.
+
+## Classificação TDD
+Cada arquivo de produção do plano recebe uma classificação, com motivo. O gate lê a classificação do estado;
+ninguém decide fora do artefato.
+
+| Classificação | Quando | Efeito |
+|---|---|---|
+| `tdd` | regra, cálculo, validação, formulário, exibição condicional, contrato, adaptador | teste antes; entra em `sources` (e em `domainSources` se for domínio); expect-red, cobertura e mutação valem |
+| `dispensa-estilo` | só layout e estilo, sem condição nem cálculo | vai para `exemptSources` com motivo; revisão visual no navegador |
+| `dispensa-biblioteca` | componente base copiado ou gerado de biblioteca já testada, sem alteração de comportamento | vai para `exemptSources` com motivo |
+
+Regras da dispensa:
+- arquivo com `if`, cálculo, validação ou estado que muda a saída não é dispensável: extraia a lógica para um
+  arquivo `tdd` e dispense só o que sobra;
+- componente de biblioteca alterado (prop nova, comportamento novo) volta a `tdd`;
+- toda feature tem ao menos um arquivo `tdd`;
+- um fluxo crítico do PRD tem `e2e` mesmo quando as telas dele são dispensadas;
+- o `reviewer` confere cada motivo; motivo vago ("é simples", "é só tela") é FAIL.
+
+Ordem na interface: montar a tela com os componentes base e conferir no navegador; extrair a lógica; escrever o
+teste de comportamento da lógica antes de implementá-la (expect-red vale para ela).
+
 ## Checklist de bordas
 Para cada entrada em texto ou número da tabela de domínio do plano, o teste cobre (ou o plano justifica por que
 não se aplica):

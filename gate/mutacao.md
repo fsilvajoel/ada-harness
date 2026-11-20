@@ -20,7 +20,8 @@ Resultado em `gates.mutation`.
 ## Critério de falha (FAIL)
 - `domainSources` ausente;
 - `domainSources` vazio com algum critério de camada `mut`;
-- arquivo de `domainSources` fora de `sources` ou inexistente;
+- arquivo de `domainSources` fora de `sources` ou inexistente (arquivo dispensado, em `exemptSources`, nunca é
+  domínio);
 - `gates.mutation.min_score` ausente no `harness.project.yaml`;
 - score abaixo de `min_score` em qualquer arquivo; nenhum mutante gerado num arquivo (0/0 é falha);
 - teste da feature falhando antes de mutar; ferramenta saindo com erro ou relatório ausente.
