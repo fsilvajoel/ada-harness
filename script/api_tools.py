@@ -209,6 +209,8 @@ class Sandbox:
             prefix = entry.strip().strip("/")
             if prefix and (normal == prefix or normal.startswith(prefix + "/")):
                 return True
+            if any(ch in prefix for ch in "*?[") and fnmatch.fnmatchcase(normal, prefix):
+                return True
         return False
 
 
