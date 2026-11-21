@@ -130,6 +130,9 @@ def visual_criteria(plan: dict[str, object]) -> list[tuple[str, str]]:
     return found
 
 
+PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
+
+
 def _write_evidence(directory: Path, payload: dict[str, object]) -> Path:
     directory.mkdir(parents=True, exist_ok=True)
     path = directory / EVIDENCE_FILE
@@ -198,6 +201,10 @@ def _review_criterion(
         entry["error"] = "screenshot ausente ou vazio"
         return entry
     entry["screenshot_sha256"] = sha256_file(screenshot)
+    with screenshot.open("rb") as handle:
+        if handle.read(len(PNG_SIGNATURE)) != PNG_SIGNATURE:
+            entry["error"] = "screenshot não é um PNG válido"
+            return entry
     if not report.is_file():
         entry["error"] = "relatório do critério ausente"
         return entry

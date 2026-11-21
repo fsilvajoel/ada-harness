@@ -44,7 +44,9 @@ revisão visual) estão atendidos e testados com fakes. Resta:
 1. **BLOQUEADO — piloto real da Onda 6**: rodar `run_feature.py` com engines reais em projeto não crítico, medir
    qualidade/custo/latência com `metrics.py` e comparar com a baseline antes de qualquer troca de engine padrão.
    Requer autorização do operador e cota.
-2. Ferramenta de revisão visual real (Playwright não instalado; só fake exercitado).
-3. Validação por `jsonschema` (não instalado); a validação canônica é `lint_contract`/linters próprios.
+2. ~~Ferramenta de revisão visual real~~ — **fechada (opcional, testado)**: `tests/fixtures/visual_check_playwright.py` (motores `playwright`, `node-playwright` com o Playwright do projeto alvo, `chromium-cli`), `tests/test_visual_real.py` (marker `visual_real`, servidor local, PASS/FAIL, PNG real); o Harness agora rejeita screenshot sem assinatura PNG. Documentado em `gate/visual-review.md`.
+3. ~~Validação por `jsonschema`~~ — **fechada (opcional, testado)**: `tests/test_schemas_jsonschema.py` (marker `schema_real`) valida os 7 schemas (Draft 2020-12) e os artefatos gerados (cartão, plano, state, evidência, engine-result, aprovação, contrato) contra o linter; nenhuma divergência schema × linter encontrada. O linter segue canônico; `jsonschema` só em `requirements-dev.txt`.
+
+   Suíte: 349 passed/4 skipped com `ADA_REQUIRE_OPTIONAL=1` e dependências instaladas (os 4 skips são anteriores e não opcionais); sem as opcionais, `test_visual_real` (7) e `test_schemas_jsonschema` (15) ficam em skip.
 4. Lock órfão de rerun após crash exige remoção manual.
 5. Engines sem `usage_jq` aparecem como consumo desconhecido; custo dessas engines fica indisponível.
