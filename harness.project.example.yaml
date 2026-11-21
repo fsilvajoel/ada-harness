@@ -11,6 +11,7 @@ language:
   commits: en
 
 # Papel -> definição no adaptador da ferramenta (adapter/). O orquestrador é qualquer agente de IA.
+# `fallbacks` (opcional) lista workers alternativos, na ordem em que devem ser tentados após falha recuperável.
 roles:
   orchestrator: {agent: null}
   planner: {agent: <definição do papel>}
@@ -22,6 +23,7 @@ roles:
 #   worker_stages: [<etapa>, ...]  o worker só nessas etapas (dispatch.py --stage); fora delas, o agent
 #   worker_paths: [<prefixo>, ...] o worker só se todo allowedPath do cartão cair num prefixo (--allowed-path)
 # Ex.: reviewer: {agent: <definição do papel>, worker: <nome api-tools>, worker_stages: [<etapa>], worker_paths: [<pasta>]}
+# Ex.: implementer: {agent: <definição do papel>, worker: <primário>, fallbacks: [<alternativo>]}
 
 # Trabalhadores: um mapa em linha por trabalhador.
 # api-chat (adapter/api-chat.md): modelo por API de chat, sem ferramentas. A chave só existe no ambiente do
@@ -30,6 +32,8 @@ roles:
 # api-tools (adapter/api-tools.md): a mesma API do api-chat com ferramentas (ler, buscar, commands.*, gravar no
 # escopo do papel); max_steps limita as chamadas por execução.
 workers:
+# Preço opcional para estimativa (não define nem consulta a fatura real):
+#   rates: {prompt_per_1k: <custo>, completion_per_1k: <custo>}
   <nome>: {adapter: api-chat, base_url: "<url da API>", model: "<modelo>", key_env: <VARIAVEL_DA_CHAVE>, key_file: <arquivo de segredos>, quota_url: "<url da consulta de cota>", quota_remaining: "<caminho jq das requisições restantes>", quota_reserve: <folga mínima>, max_attempts: 6, timeout_s: <segundos>}
   <nome api-tools>: {adapter: api-tools, base_url: "<url da API>", model: "<modelo>", key_env: <VARIAVEL_DA_CHAVE>, key_file: <arquivo de segredos>, roles: "<papéis permitidos>", max_steps: 20, command_timeout_s: 600, max_attempts: 6, timeout_s: <segundos>}
   <outro nome>: {adapter: cli-agent, command: <programa>, read_args: "<argumentos do modo leitura>", write_args: "<argumentos do modo escrita>", output_jq: "<filtro jq da resposta final (opcional)>", usage_jq: "<filtro jq do consumo (opcional)>", roles: "<papéis permitidos>", max_attempts: 6, timeout_s: <segundos>}
@@ -79,6 +83,32 @@ gates:
   mutation: {tool: <ferramenta de mutação>, min_score: <score mínimo, 0 a 100>}
   e2e: {tool: <ferramenta e2e>}
 
+# Revisão visual (onda 3): roda no finalReview quando o plano tem fonte dispensa-estilo/dispensa-biblioteca.
+# O Harness não traz navegador; use a ferramenta do próprio projeto. Placeholders: {target} {criterion}
+# {screenshot} {report} {feature}. O relatório JSON precisa ser {"criterion", "found": true, "summary"}.
+# Sem esta seção, feature visual FALHA no finalReview (nunca PASS sem evidência). Não coloque token no target:
+# query, fragmento e credenciais são removidos da evidência.
+visual_review:
+  command: <comando, ex.: node scripts/visual-check.mjs --url {target} --criterion {criterion} --shot {screenshot} --report {report}>
+  target: <URL local da tela, ex.: http://localhost:5173>
+  timeout_s: 120
+
+# Contrato de feature (onda 5): consumido por script/feature_contract.py e script/run_feature.py.
+# Todas as 7 stages pós-plano são obrigatórias; {feature} é substituído pelo ID da feature.
+# `cards: <kind>` anexa os cartões desse kind (allowedPaths dos cartões entram no escopo da stage).
+# A política de testes do plano decide `applicable` (stage não aplicável é pulada com evento).
+feature_contract:
+  sdd_dir: docs/sdd
+  planner: {role: planner}
+  stages:
+    refinement:   {role: refiner, gate: verify, allowedPaths: ["docs/plano/{feature}/refinement.md"]}
+    tests:        {role: test-author, gate: verify, cards: test-author, allowedPaths: ["docs/plano/{feature}/tests.md"]}
+    testReview:   {role: reviewer, gate: verify, allowedPaths: ["docs/plano/{feature}/test-review.md"]}
+    implement:    {role: implementer, gate: verify, cards: implement, allowedPaths: ["docs/plano/{feature}/implement.md"]}
+    mutation_e2e: {role: reviewer, gate: verify, allowedPaths: ["docs/plano/{feature}/mutation.md"]}
+    finalReview:  {role: reviewer, gate: verify, allowedPaths: ["docs/plano/{feature}/final-review.md"]}
+    closing:      {role: closer, gate: verify, allowedPaths: ["docs/plano/{feature}/closing.md"]}
+
 # Gate portable: textos do projeto que não podem aparecer dentro do harness.
 portable:
   forbidden:
@@ -90,3 +120,4 @@ checks:
   - skill-format
   - card-skills
   - role-skills
+  - artifact-lint

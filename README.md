@@ -1,4 +1,14 @@
-# Harness-adaV1
+# Harness Ada
+
+## Versão atual
+
+- V1 compatível: workflow, papéis, adaptadores, gates e estado existentes;
+- evolução 2.0 incremental: primitives de pipeline, schemas, política condicional, dashboard com diffs e aprovação SDD;
+- plano operacional: [EvolucaoAdaHarness2.0.md](EvolucaoAdaHarness2.0.md).
+
+O runner 2.0 despacha e executa uma stage configurada em worktree isolada. Ele ainda não coordena uma feature inteira
+a partir de PRD/ADR/RFC: geração automática de plano/cartões e driver sequencial permanecem necessários antes de
+declarar autonomia ponta a ponta.
 
 Harness de processo para agentes de IA, agnóstico ao modelo e à ferramenta. Trabalha **sobre** um repositório
 alvo e não pertence a ele: tudo o que é do projeto (papéis, comandos, skills, textos proibidos) fica no
@@ -15,7 +25,7 @@ alvo e não pertence a ele: tudo o que é do projeto (papéis, comandos, skills,
 | `policy/` | regras globais (inclui [idioma](policy/idioma.md)) |
 | `workflow/` | sequência de etapas e passagens |
 | `gate/` | critérios que aprovam ou bloqueiam (PASS/FAIL) |
-| `script/` | utilitários do harness (checks portable e skill-format, executor api-chat) |
+| `script/` | utilitários V1 e componentes 2.0 (pipeline, artefatos, SDD, dashboard e métricas) |
 | `tests/` | validação do próprio harness |
 
 ## Regras de arquitetura

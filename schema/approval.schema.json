@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Ada Harness SDD Approval",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "document",
+    "status",
+    "reviewer",
+    "hash",
+    "decisions",
+    "open_questions",
+    "approved_at"
+  ],
+  "properties": {
+    "schemaVersion": {"const": 2},
+    "document": {"enum": ["prd", "adr", "rfc", "plan"]},
+    "status": {"enum": ["approved", "rejected", "needs_input"]},
+    "reviewer": {"type": "string", "minLength": 1},
+    "hash": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "decisions": {"type": "array", "items": {"type": "string", "minLength": 1}},
+    "open_questions": {"type": "array", "items": {"type": "string", "minLength": 1}},
+    "approved_at": {"type": "string", "format": "date-time"}
+  },
+  "additionalProperties": false
+}

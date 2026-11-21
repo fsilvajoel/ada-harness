@@ -133,6 +133,7 @@ def resolve_worker(
     second_opinion: bool,
     stage: str | None = None,
     allowed_paths: list[str] | None = None,
+    worker_override: str | None = None,
 ) -> tuple[str, str]:
     """Devolve (nome do trabalhador, adaptador) do papel; sem trabalhador (ou fora da rota), `DispatchError` 8."""
     try:
@@ -142,6 +143,18 @@ def resolve_worker(
     role_entry = _entry(config, "roles", role)
     field = "second_opinion" if second_opinion else "worker"
     name = role_entry.get(field) if role_entry else None
+    if worker_override is not None:
+        if second_opinion:
+            raise DispatchError(EXIT_CONFIG, "--worker não pode ser combinado com --second-opinion")
+        if role_entry is None or not isinstance(name, str) or not name.strip():
+            raise DispatchError(EXIT_CONFIG, f"roles.{role}.worker ausente para fallback")
+        fallbacks = _str_list(role_entry, "fallbacks", role) or []
+        if worker_override != name.strip() and worker_override not in fallbacks:
+            raise DispatchError(
+                EXIT_CONFIG,
+                f"workers.{worker_override} não está na cadeia configurada de roles.{role}",
+            )
+        name = worker_override
     if not isinstance(name, str) or not name.strip():
         raise DispatchError(EXIT_NO_WORKER, f"roles.{role}.{field} ausente: o papel segue com o agent")
     name = name.strip()
@@ -191,6 +204,7 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     parser.add_argument("project_root", type=Path)
     parser.add_argument("--role", required=True)
     parser.add_argument("--second-opinion", action="store_true", help="usa roles.<papel>.second_opinion")
+    parser.add_argument("--worker", help="executor específico da cadeia worker/fallback do papel")
     parser.add_argument("--mode", choices=["read", "write"], help="cli-agent e api-tools (padrão pelo papel)")
     parser.add_argument("--skills", action="append", default=[], help="skills do cartão: nome ou nome#regra")
     parser.add_argument("--request", type=Path)
@@ -213,7 +227,12 @@ def main(argv: list[str] | None = None) -> int:
     try:
         try:
             name, adapter = resolve_worker(
-                args.project_root.resolve(), args.role, args.second_opinion, args.stage, args.allowed_path
+                args.project_root.resolve(),
+                args.role,
+                args.second_opinion,
+                args.stage,
+                args.allowed_path,
+                args.worker,
             )
         except DispatchError as exc:
             if exc.exit_code == EXIT_NO_WORKER:

@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Ada Harness Gate Evidence",
+  "type": "object",
+  "required": ["gate", "status", "exit_code", "command", "output", "output_sha256", "finished_at"],
+  "properties": {
+    "gate": {"type": "string", "minLength": 1},
+    "status": {"enum": ["PASS", "FAIL"]},
+    "exit_code": {"type": "integer"},
+    "command": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"type": "string", "minLength": 1}
+    },
+    "output": {"type": "string", "minLength": 1},
+    "output_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "finished_at": {"type": "string", "format": "date-time"}
+  },
+  "additionalProperties": false
+}
