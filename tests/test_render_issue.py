@@ -15,7 +15,16 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from script.render_issue import MAX_BODY, RenderError, main, mark, render_selected, short_hash  # noqa: E402
+from script.render_issue import (  # noqa: E402
+    MAX_BODY,
+    Context,
+    RenderError,
+    main,
+    mark,
+    render_selected,
+    resolve_ref,
+    short_hash,
+)
 
 REAL = os.environ.get("ADA_TEST_PROJECT")
 real_project = pytest.mark.skipif(not REAL, reason="defina ADA_TEST_PROJECT com a raiz de um projeto real")
@@ -230,6 +239,17 @@ def test_all_writes_one_file_per_target(project: Path, tmp_path_factory: pytest.
 def test_unknown_targets_exit_2(project: Path) -> None:
     assert main([str(project), "--feature", "ZZ-F99"]) == 2
     assert main([str(project), "--defeito", "D99"]) == 2
+
+
+def test_resolve_ref_doc_with_decisions(project: Path) -> None:
+    ctx = Context(root=project, docs=project / "docs", plano=project / "docs" / "plano")
+    ref = resolve_ref(ctx, "docs/plano/nota.md D4 D8 D9", "X1-T01")
+    assert ref is not None
+    assert ref.label == "docs/plano/nota.md D4 D8 D9"
+    assert ref.rel == "docs/plano/nota.md"
+    assert ctx.errors == []
+    assert resolve_ref(ctx, "docs/plano/E10.md D4 D8 D9", "X1-T01") is None
+    assert len(ctx.errors) == 1 and "não existe" in ctx.errors[0]
 
 
 def test_deterministic(project: Path) -> None:

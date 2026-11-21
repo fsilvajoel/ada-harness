@@ -35,7 +35,7 @@ role_skills:
   refiner:
     - beta
 roles:
-  refiner: {{ agent: a.md, worker: cli }}
+  refiner: {{ agent: a.md, worker: cli, fallbacks: [backup] }}
   reviewer: {{ agent: b.md, second_opinion: cli }}
   planner: {{ agent: c.md }}
   implementer: {{ agent: d.md, worker: ghost }}
@@ -48,6 +48,14 @@ workers:
     write_args: "{fake} --rw"
     output_jq: '[.[] | select(.type == "assistant.message")] | last | .text'
     roles: "refiner reviewer"
+    timeout_s: 30
+  backup:
+    adapter: cli-agent
+    command: {sys.executable}
+    read_args: "{fake} --ro"
+    write_args: "{fake} --rw"
+    output_jq: '[.[] | select(.type == "assistant.message")] | last | .text'
+    roles: "refiner"
     timeout_s: 30
   other:
     adapter: desconhecido
@@ -98,6 +106,12 @@ def test_papel_sem_worker_sai_com_8(project: Path) -> None:
 def test_worker_ou_adapter_invalido_sai_com_2(project: Path) -> None:
     assert dispatch(project, "--role", "implementer").returncode == 2
     assert dispatch(project, "--role", "tester").returncode == 2
+
+
+def test_fallback_worker_override_is_restricted_to_configured_chain(project: Path) -> None:
+    done = dispatch(project, "--role", "refiner", "--worker", "backup")
+    assert done.returncode == 0, done.stderr
+    assert dispatch(project, "--role", "refiner", "--worker", "other").returncode == 2
 
 
 def test_codigo_de_saida_do_executor_passa(project: Path) -> None:

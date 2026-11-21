@@ -33,6 +33,7 @@ from __future__ import annotations
 import argparse
 import fcntl
 import hashlib
+import fnmatch
 import json
 import os
 import re
@@ -315,7 +316,7 @@ def parse_response(text: str, allowed: list[str]) -> dict[str, str]:
             if match is None:
                 continue
             current, body = match.group(1).strip(), []
-            if current not in allowed:
+            if not in_scope(current, allowed):
                 raise ValueError(f"caminho fora de allowedPaths: {current}; permitidos: {', '.join(allowed)}")
             if current in blocks:
                 raise ValueError(f"caminho repetido: {current}")
@@ -544,7 +545,13 @@ def read_meta(path: Path) -> dict[str, object]:
 
 
 def in_scope(rel: str, allowed: list[str]) -> bool:
-    return any(rel == item or rel.startswith(item.rstrip("/") + "/") for item in allowed)
+    """Caminho exato, prefixo de pasta ou glob (`*`, `?`, `[...]`; `*` atravessa `/`, então `pasta/**` vale a árvore)."""
+    return any(
+        rel == item
+        or rel.startswith(item.rstrip("/") + "/")
+        or (any(ch in item for ch in "*?[") and fnmatch.fnmatchcase(rel, item))
+        for item in allowed
+    )
 
 
 FileSig = tuple[int, int, int]  # tamanho, mtime_ns, modo

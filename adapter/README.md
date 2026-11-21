@@ -13,6 +13,11 @@ O adaptador não muda o núcleo.
 
 O despacho é automático: `script/dispatch.py --role <papel>` escolhe o executor pelo `roles.<papel>.worker` ([cli-agent](cli-agent.md#despacho-automático)).
 Rota opcional por papel: `worker_stages` e `worker_paths`, com `--stage` e `--allowed-path` ([api-tools](api-tools.md#roteamento-pelo-dispatchpy)).
+Uma cadeia opcional `roles.<papel>.fallbacks` lista workers alternativos; `--worker` só pode selecionar o primário ou um
+fallback declarado nessa cadeia.
+
+`script/stage_runner.py` usa esse despacho numa stage configurada por chamada. Sucesso gera commit numa branch
+`harness/*` isolada, sem merge automático; não substitui `run_card.py` nem coordena uma feature inteira.
 
 O api-chat tem executor próprio: `script/api_chat.py` (uma requisição, chave resolvida pelo script).
 

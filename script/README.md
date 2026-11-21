@@ -50,3 +50,51 @@ Executores e gates: `api_chat.py` (api-chat), `api_tools.py` (api-tools), `cli_a
   prosa (palavras vazias do inglês fora de código, URLs e blocos `<!--t:-->`; o título `# ...` da linha 1 fica de
   fora) e, com `--translated`, bloco sem tradução. Saída 0 limpo, 1 uma linha por achado, 2 uso.
 Molde: [_modelo.md](_modelo.md).
+
+## Evolução 2.0
+
+- `events.py`: event log append-only e validação mínima;
+- `pipeline.py`: máquina de estados, replay, tentativas, pausa por decisão humana e importação de estado legado;
+- `stage_runner.py`: coordena dispatch, gate, fallback, preflight, worktree por tentativa e evidências; não contém
+  lógica de provider e executa **uma stage por chamada**, não uma feature inteira. CLI:
+  `python3 script/stage_runner.py <raiz> --run <id>
+  --feature <id> --stage <stage> --role <papel> --request <arquivo> --gate <commands.key> --allowed-path <path>`;
+- cada tentativa salva `engine-result.json`, logs e manifestos de gate em `.harness/runs/`; metadados inválidos
+  bloqueiam a stage. Commit aprovado permanece em branch `harness/*`, não é mesclado à branch original;
+- `worktree.py`: cria branches/worktrees isoladas fora da raiz do projeto e oferece remoção explícita;
+- `evidence.py`: manifesto validado com SHA-256 da saída do gate;
+- `fallback.py`: usa primeiro o executor primário e só então percorre os fallbacks configurados;
+- `plan_lint.py`: validação estruturada do plano;
+- `card_lint.py`: validação de DoR, DoD, scope e checks;
+- `artifact_lint.py`: preflight de cartões, dependências e planos do projeto;
+- `testing_policy.py`: resolução de gates por classificação, critério e stage; uma feature visual pode pular os gates TDD;
+- `attempt_manifest.py`: manifesto imutável por tentativa (`attempt-manifest.json`, gravado com `xb`) com papel,
+  executor e cadeia de fallback, modo, gate, `allowedPaths`, skills, SHA-256 do request e do `harness.project.yaml`,
+  base SHA e só os **nomes** das variáveis de segredo; o event log guarda o hash do manifesto. `rerun_eligibility`
+  só libera a stage atual em `failed` com manifesto íntegro, config/request/base inalterados, sem worktree ativa e
+  sem `rerun.lock`; `rerun_stage` refaz a tentativa a partir do manifesto (nova tentativa, histórico preservado).
+  Um `rerun.lock` órfão de crash mantém a stage inelegível até remoção manual (comportamento seguro);
+- `dashboard.py`: visão local derivada do status/event log, com engine, tentativas, custo configurado, hashes de
+  evidência, manifestos, elegibilidade de rerun, worktrees e paths/stat do diff. **Padrão somente leitura.**
+  `--enable-rerun` (recusado fora de loopback) habilita `POST /api/rerun` com token aleatório por processo,
+  checagem de Host/Origin loopback, JSON com exatamente `run_id`/`feature_id`/`stage`, corpo ≤ 4 KiB e
+  elegibilidade recalculada do disco; nenhum comando arbitrário é aceito;
+- `sdd.py`: validação e aprovação por hash da cadeia PRD/ADR/RFC, com publicação validada de plano e cartões V2;
+- `metrics.py`: consolidação de tokens, retries, duração, custo estimado (só com rates fornecidas), fallbacks e falhas. `build_report`/CLI `metrics.py <raiz> [--config harness.project.yaml]` gera relatório por feature e engine (1ª tentativa, retries, fallbacks, gates, duração); consumo desconhecido nunca vira zero e custo sem taxa ou com consumo desconhecido é `null`.
+
+- `feature_contract.py`: monta e valida (`lint_contract`) o contrato versionado da feature
+  (`docs/plano/<feature>/contract.json`, schema `schema/feature-contract.schema.json`): SHA-256 do SDD, plano,
+  cartões, config e request de cada stage; papel, cadeia de executores, gate, `allowedPaths`, skills, cartões
+  e aplicabilidade pela política de testes. Ciclo, cartão/gate/stage desconhecido, cadeia divergente da config,
+  path inseguro e campo extra são rejeitados;
+- `run_feature.py`: **um comando por feature**. `python3 script/run_feature.py <raiz> --run <id> --feature <id>
+  [--retry-failed]`. SDD aprovado -> planner gera `plan.json`/`cards.yaml` (ou `questions.json`) em staging ->
+  aprovação humana por hash (`sdd.py approve plan ...`) -> publicação lintada + contrato numa branch `harness/*`
+  -> stages em sequência via `run_configured_stage`, cada uma partindo do commit da anterior. Antes de cada stage
+  reverifica contrato, config, SDD e requests (adulteração bloqueia sem chamar worker). Saída 0 concluída,
+  1 bloqueada, 2 uso, 3 aguardando decisão humana; resumo JSON no stdout. Retomar não repete stage concluída.
+  Nada é mesclado.
+
+`stage_runner.run_stage` mantém callbacks para testes isolados; `run_configured_stage` conecta o runner ao
+`harness.project.yaml`, ao `dispatch.py` e aos comandos de gate. `run_card.py` continua sendo o fluxo **V1** para
+cartões `test-author`/`implement` avulsos (sem pipeline 2.0 nem commits); não é usado pelo `run_feature.py`.

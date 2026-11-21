@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Ada Harness 2.0 Card",
+  "type": "object",
+  "required": ["schemaVersion", "id", "title", "kind", "allowedPaths", "checks", "dor", "dod"],
+  "properties": {
+    "schemaVersion": {"const": 2},
+    "id": {"type": "string", "minLength": 1},
+    "title": {"type": "string", "minLength": 1},
+    "kind": {"enum": ["docs", "implement", "pre-review", "test-author"]},
+    "dor": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}},
+    "dod": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}},
+    "allowedPaths": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1}
+    },
+    "generatedPaths": {"type": "array", "items": {"type": "string", "minLength": 1}},
+    "dependsOn": {"type": "array", "items": {"type": "string", "minLength": 1}},
+    "refs": {"type": "array", "items": {"type": "string", "minLength": 1}},
+    "done": {"type": "array", "items": {"type": "string", "minLength": 1}},
+    "checks": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}},
+    "readFirst": {"type": "array", "items": {"type": "string", "minLength": 1}},
+    "protectedTests": {"type": "array", "items": {"type": "string", "minLength": 1}},
+    "skills": {"type": "array", "items": {"type": "string", "minLength": 1}},
+    "budget": {
+      "type": "object",
+      "required": ["attempts", "toolCalls", "minutes"],
+      "properties": {
+        "attempts": {"type": "integer", "minimum": 1},
+        "toolCalls": {"type": "integer", "minimum": 1},
+        "minutes": {"type": "integer", "minimum": 1}
+      }
+    }
+  },
+  "additionalProperties": true,
+  "allOf": [
+    {
+      "if": {"properties": {"kind": {"enum": ["implement", "test-author"]}}},
+      "then": {"properties": {"allowedPaths": {"minItems": 1}}}
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Ada Harness Engine Result",
+  "type": "object",
+  "required": ["exit_code", "output"],
+  "properties": {
+    "exit_code": {"type": "integer"},
+    "output": {"type": "string"},
+    "usage": {
+      "type": "object",
+      "additionalProperties": {"type": "integer", "minimum": 0}
+    }
+  },
+  "additionalProperties": false
+}

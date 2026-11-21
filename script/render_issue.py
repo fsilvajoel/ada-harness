@@ -225,6 +225,9 @@ def rule_text(ctx: Context, prd: Path, rule: str) -> str:
     return ""
 
 
+DOC_DECISIONS_RE = re.compile(r"^(\S+\.md)((?:\s+D\d+)+)$")
+
+
 @dataclass
 class ResolvedRef:
     """Uma referência de cartão resolvida: texto do link, caminho relativo (se for arquivo) e regra citada."""
@@ -256,6 +259,13 @@ def resolve_ref(ctx: Context, ref: str, origin: str) -> ResolvedRef | None:
             if not block:
                 ctx.errors.append(f"{origin}: regra '{rest}' não está em {ctx.rel(doc)}")
         return ResolvedRef(label=text, rel=ctx.rel(doc), rule_block=block)
+    decisions = DOC_DECISIONS_RE.match(text)
+    if decisions:
+        target = (ctx.root / decisions.group(1)).resolve()
+        if not target.exists():
+            ctx.errors.append(f"{origin}: referência '{text}' não existe")
+            return None
+        return ResolvedRef(label=text, rel=ctx.rel(target))
     if "/" in text and "." in text.rsplit("/", 1)[-1]:
         target = (ctx.root / text).resolve()
         if not target.exists():

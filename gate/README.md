@@ -11,6 +11,8 @@ Formato de cada arquivo: [_modelo.md](_modelo.md).
 | [portable](portable.md) | o harness está livre de referências ao projeto alvo? | `script/check_portable.py <config do projeto>` |
 | [skill-format](skill-format.md) | toda skill segue `<skill_dir>/<nome>/SKILL.md` com frontmatter? | `script/check_skill_format.py <skill_dir>` |
 | [card-skills](card-skills.md) | todo cartão de caminho exigido (ex.: web) declara `skills:` e cada item existe? | `script/check_card_skills.py <raiz do projeto>` |
+| [artifact-lint](artifact-lint.md) | planos e cartões têm estrutura e dependências válidas antes de executar? | `python3 script/artifact_lint.py <raiz do projeto>` |
+| [sdd-approval](sdd-approval.md) | PRD, ADR e RFC estão aprovados e seus hashes continuam válidos? | `python3 script/sdd.py validate <diretório SDD>` |
 | [role-skills](role-skills.md) | `role_skills` e a seção "Skills obrigatórias" dos moldes dizem o mesmo? | `script/check_role_skills.py <raiz do projeto>` |
 | [status-consistency](status-consistency.md) | o `estado.json` acompanha os commits que citam a feature? | `script/check_status_consistency.py <raiz do projeto>` |
 | [edit-guard](edit-guard.md) | a tool respeita hooks do git, `.env` e o repositório? | trava do adaptador ([Claude Code](../adapter/claude-code.md)) |
@@ -20,4 +22,5 @@ Formato de cada arquivo: [_modelo.md](_modelo.md).
 | [cobertura](cobertura.md) | os arquivos da feature têm 100% de cobertura e a medição não é vazia? | `pnpm gate coverage <feature>` |
 | [mutacao](mutacao.md) | os testes matam os mutantes dos arquivos de domínio acima do score mínimo? | `pnpm gate mutation <feature>` |
 | [e2e](e2e.md) | os fluxos e2e da feature passam no navegador? | `pnpm gate e2e <feature>` |
+| [visual-review](visual-review.md) | cada critério visual tem screenshot e relatório com hash, gerados pela ferramenta do projeto? | `python3 script/visual_review.py <raiz> --plan <plan.json> --feature <id> --evidence <pasta>` (automático no `finalReview`) |
 | [auditoria](auditoria.md) | a auditoria aprovou? | manual (`reviewer`) |
