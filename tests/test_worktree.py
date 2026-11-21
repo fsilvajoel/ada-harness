@@ -130,6 +130,23 @@ def test_stage_commit_formats_code_files_before_commit(tmp_path: Path) -> None:
     remove_attempt_worktree(root, worktree, delete_branch=True)
 
 
+def test_stage_commit_stub_paths_accept_only_new_files(tmp_path: Path) -> None:
+    root = repo(tmp_path)
+    worktree, _ = create_attempt_worktree(root, "run-1", "E1-F01", "tests", 1)
+    (worktree / "stub.ts").write_text("export {};\n", encoding="utf-8")
+    commit_attempt(
+        worktree, allowed_paths=["stub.ts"], feature_id="E1-F01", stage="tests", attempt=1,
+        new_only_paths=["stub.ts"],
+    )
+    (worktree / "stub.ts").write_text("export const a = 1;\n", encoding="utf-8")
+    with pytest.raises(WorktreeError, match="arquivo novo"):
+        commit_attempt(
+            worktree, allowed_paths=["stub.ts"], feature_id="E1-F01", stage="tests", attempt=2,
+            new_only_paths=["stub.ts"],
+        )
+    remove_attempt_worktree(root, worktree, force=True, delete_branch=True)
+
+
 def test_stage_commit_rejects_changes_outside_scope(tmp_path: Path) -> None:
     root = repo(tmp_path)
     worktree, _ = create_attempt_worktree(root, "run-1", "E1-F01", "implement", 1)

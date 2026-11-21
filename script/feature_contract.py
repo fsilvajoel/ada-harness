@@ -38,6 +38,7 @@ STAGE_FIELDS: Final[frozenset[str]] = frozenset({
     "stage", "role", "executorChain", "maxAttempts", "request", "gate", "timeoutS", "allowedPaths", "skills",
     "mode", "cards", "applicable",
 })
+OPTIONAL_STAGE_FIELDS: Final[frozenset[str]] = frozenset({"stubPaths"})
 DEFAULT_WORKER_TIMEOUT_S: Final[int] = 1800
 
 type Contract = dict[str, object]
@@ -55,6 +56,7 @@ class StageSpec:
     allowed_paths: tuple[str, ...]
     skills: tuple[str, ...]
     card_kind: str | None
+    stubs_from: str | None = None
 
 
 @dataclass(frozen=True)
@@ -125,6 +127,9 @@ def load_contract_config(config: dict[str, object], feature_id: str) -> Contract
         card_kind = entry.get("cards")
         if card_kind is not None and card_kind not in CARD_KINDS:
             raise ContractError(f"{label}.cards precisa ser um kind de cartão")
+        stubs_from = entry.get("stubsFrom")
+        if stubs_from is not None and stubs_from not in CARD_KINDS:
+            raise ContractError(f"{label}.stubsFrom precisa ser um kind de cartão")
         allowed = tuple(
             path.replace("{feature}", feature_id)
             for path in _str_list(entry.get("allowedPaths"), f"{label}.allowedPaths")
@@ -136,6 +141,7 @@ def load_contract_config(config: dict[str, object], feature_id: str) -> Contract
             allowed_paths=allowed,
             skills=_str_list(entry.get("skills"), f"{label}.skills"),
             card_kind=card_kind if isinstance(card_kind, str) else None,
+            stubs_from=stubs_from if isinstance(stubs_from, str) else None,
         )
     return ContractConfig(sdd_dir=str(sdd_dir), planner_role=planner_role, stages=stages)
 
@@ -220,6 +226,7 @@ def render_request(
     cards: list[dict[str, object]],
     stage_cards: list[str],
     allowed_paths: list[str],
+    stub_paths: list[str] | None = None,
 ) -> str:
     """Request determinístico da stage: só caminhos, hashes e campos estruturados (sem segredos)."""
     lines = [
@@ -245,6 +252,14 @@ def render_request(
         "",
         "## Escopo permitido desta stage",
         *(f"- {path}" for path in allowed_paths),
+        *(
+            [
+                "",
+                "## Stubs tipados permitidos (somente arquivos novos; arquivo existente não pode ser alterado)",
+                *(f"- {path}" for path in stub_paths),
+            ]
+            if stub_paths else []
+        ),
         "",
         "## Regras",
         "- Escreva apenas dentro do escopo permitido; qualquer arquivo fora dele descarta a tentativa.",
@@ -297,6 +312,14 @@ def build_contract(
         allowed = _union([list(stage_spec.allowed_paths), *(_card_list(card, "allowedPaths") for card in stage_cards)])
         skills = _union([list(stage_spec.skills), *(_card_list(card, "skills") for card in stage_cards)])
         card_ids = [str(card["id"]) for card in stage_cards]
+        stub_paths: list[str] = []
+        if stage_spec.stubs_from:
+            stub_cards = [card for card in ordered if card.get("kind") == stage_spec.stubs_from]
+            stub_paths = [
+                path for path in _union([_card_list(card, "allowedPaths") for card in stub_cards])
+                if "*" not in path and path not in allowed
+            ]
+            allowed = _union([allowed, stub_paths])
         content = render_request(
             feature_id=feature_id,
             stage=stage,
@@ -307,6 +330,7 @@ def build_contract(
             cards=ordered,
             stage_cards=card_ids,
             allowed_paths=allowed,
+            stub_paths=stub_paths,
         )
         request_path = (request_dir / f"{stage}.md").as_posix()
         requests[request_path] = content
@@ -323,6 +347,7 @@ def build_contract(
             "mode": stage_spec.mode,
             "cards": card_ids,
             "applicable": policy.get(stage, True),
+            **({"stubPaths": stub_paths} if stub_paths else {}),
         })
     contract: Contract = {
         "schemaVersion": CONTRACT_VERSION,
@@ -452,7 +477,7 @@ def lint_contract(contract: object, config: dict[str, object]) -> list[str]:
             errors.append(f"stages[{index}]: precisa ser mapa")
             continue
         label = f"stages.{entry.get('stage', index)}"
-        if set(entry) != STAGE_FIELDS:
+        if not STAGE_FIELDS <= set(entry) <= STAGE_FIELDS | OPTIONAL_STAGE_FIELDS:
             errors.append(f"{label}: campos esperados {', '.join(sorted(STAGE_FIELDS))}")
             continue
         role = entry.get("role")
@@ -482,6 +507,12 @@ def lint_contract(contract: object, config: dict[str, object]) -> list[str]:
             errors.append(f"{label}: commands.{gate} não configurado")
         errors.extend(_ref_errors(entry.get("request"), f"{label}.request"))
         allowed = entry.get("allowedPaths")
+        stub_paths_value = entry.get("stubPaths", [])
+        if not isinstance(stub_paths_value, list) or any(
+            not safe_relative(path) or path not in (allowed if isinstance(allowed, list) else [])
+            for path in stub_paths_value
+        ):
+            errors.append(f"{label}.stubPaths: caminho inseguro ou fora de allowedPaths")
         if not isinstance(allowed, list) or any(not safe_relative(path) for path in allowed):
             errors.append(f"{label}.allowedPaths: caminho inseguro")
         elif entry.get("applicable") is True and not allowed:

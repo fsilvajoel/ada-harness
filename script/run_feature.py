@@ -501,6 +501,7 @@ class FeatureRunner:
                 allowed_paths=[str(path) for path in entry["allowedPaths"]],  # type: ignore[union-attr]
                 skills=[str(skill) for skill in entry["skills"]],  # type: ignore[union-attr]
                 mode=str(entry["mode"]),
+                stub_paths=[str(path) for path in entry.get("stubPaths", [])],  # type: ignore[union-attr]
             )
             if not result.passed:
                 _emit({"status": "failed", "stage": stage, "reason": result.reason,
