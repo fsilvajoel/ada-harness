@@ -1,0 +1,3 @@
+# Opcional: so para o teste visual_real e a ferramenta de referencia.
+# Sem `playwright install`: usa o Chromium do sistema (ADA_CHROMIUM, padrao /usr/bin/chromium).
+playwright==1.65.1

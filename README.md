@@ -43,3 +43,14 @@ alvo e não pertence a ele: tudo o que é do projeto (papéis, comandos, skills,
 - Ponto de entrada: o workflow [feature](workflow/feature.md), conduzido por qualquer agente de IA (orquestrador).
 - Skills, gates, policies e moldes são **compartilhados**: ficam em [skill/](skill/README.md), `gate/` etc., e todo papel lê todos ([decisão](capability/recursos-compartilhados.md)). O `skill_dir` do `harness.project.yaml` aponta para `skill/`; o adaptador pode ligar um caminho local por link simbólico.
 - Configuração real do projeto no `harness.project.yaml` dele (papéis, comandos, checks, textos proibidos).
+
+## Dependências de desenvolvimento
+
+```bash
+python3 -m venv .venv && .venv/bin/pip install -r requirements-dev.txt   # pytest, PyYAML, jsonschema
+.venv/bin/pip install -r requirements-visual.txt                         # opcional: Playwright (usa o chromium do sistema)
+.venv/bin/python -m pytest -q
+```
+
+O runtime do Harness não depende de nada disso. Testes que usam `jsonschema`, Playwright ou Chromium são
+opcionais e ficam em skip se faltar a dependência; `ADA_REQUIRE_OPTIONAL=1` transforma o skip em falha.

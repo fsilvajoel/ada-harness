@@ -23,6 +23,7 @@ from script.visual_review import (
 )
 
 TOOL = """import json, sys, time
+MINIMAL_PNG = bytes.fromhex("89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c4890000000b49444154789c63f80f040009fb03fdfb5e6b2b0000000049454e44ae426082")
 from pathlib import Path
 args = dict(zip(sys.argv[1::2], sys.argv[2::2]))
 mode = Path(args['--mode-file']).read_text().strip() if '--mode-file' in args else 'ok'
@@ -31,7 +32,10 @@ if mode == 'sleep':
 if mode == 'crash':
     raise SystemExit(3)
 if mode != 'no-shot':
-    Path(args['--shot']).write_bytes(b'\\x89PNG fake ' + args['--criterion'].encode())
+    if mode == 'fake-png':
+        Path(args['--shot']).write_bytes(b'\\x89PNG fake')
+    else:
+        Path(args['--shot']).write_bytes(MINIMAL_PNG)
 if mode != 'no-report':
     Path(args['--report']).write_text(json.dumps({
         'criterion': args['--criterion'],
@@ -119,6 +123,14 @@ def test_visual_review_passes_with_hashed_evidence_and_sanitized_target(tmp_path
     assert entry["criterion"] == "A1" and entry["status"] == "PASS"
     assert len(entry["screenshot_sha256"]) == 64
     assert validate_visual_evidence(result.evidence) == []
+
+
+def test_fake_png_screenshot_fails(tmp_path: Path) -> None:
+    result = review(tmp_path, visual_plan(), tool_config(tmp_path, mode="fake-png"))
+    assert result.status == "FAIL"
+    assert result.evidence is not None
+    data = json.loads(result.evidence.read_text(encoding="utf-8"))
+    assert "PNG" in data["criteria"][0]["error"]
 
 
 def test_tampered_screenshot_invalidates_evidence(tmp_path: Path) -> None:
