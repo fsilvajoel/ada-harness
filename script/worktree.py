@@ -89,6 +89,24 @@ def create_attempt_worktree(
     return destination, base_sha
 
 
+FORMAT_SUFFIXES = (".ts", ".tsx", ".mts", ".cts", ".js", ".mjs", ".cjs", ".json")
+
+
+def _format_changed(worktree: Path, format_command: list[str], changed: list[str]) -> None:
+    """Formata (ex.: `prettier --write`) os arquivos de código alterados antes do commit; o hook segue ligado."""
+    targets = [
+        path for path in changed
+        if path.endswith(FORMAT_SUFFIXES) and (worktree / path).is_file()
+    ]
+    if not targets:
+        return
+    result = subprocess.run(
+        [*format_command, *targets], cwd=worktree, check=False, capture_output=True, text=True, timeout=300
+    )
+    if result.returncode != 0:
+        raise WorktreeError(f"format-write falhou: {(result.stderr or result.stdout).strip()}")
+
+
 def commit_attempt(
     worktree: Path,
     *,
@@ -96,6 +114,7 @@ def commit_attempt(
     feature_id: str,
     stage: str,
     attempt: int,
+    format_command: list[str] | None = None,
 ) -> str:
     if not allowed_paths or any(not _safe_path(path) for path in allowed_paths):
         raise WorktreeError("allowed_paths precisa conter paths relativos e seguros")
@@ -123,6 +142,9 @@ def commit_attempt(
         raise WorktreeError(f"arquivos alterados fora de allowedPaths: {', '.join(outside)}")
     if not changed:
         return git(worktree, "rev-parse", "HEAD")
+
+    if format_command:
+        _format_changed(worktree, format_command, changed)
 
     # Só os paths alterados (já validados contra allowedPaths): um allowedPath ainda inexistente não quebra o commit.
     git(worktree, "add", "-A", "--", *changed)

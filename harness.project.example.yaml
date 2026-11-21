@@ -76,6 +76,7 @@ commands:
   typecheck: <checagem de tipos>
   lint: <lint>
   format: <formatação>
+  format-write: <formatador in-place, opcional, ex. prettier --write>
   verify: <verificação completa>
 
 # Ferramentas e limites dos gates mutacao e e2e (gate/mutacao.md, gate/e2e.md). Mapas inline.

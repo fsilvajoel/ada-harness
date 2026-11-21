@@ -108,6 +108,28 @@ def test_stage_commit_is_scoped_and_has_required_trailer(tmp_path: Path) -> None
     remove_attempt_worktree(root, worktree, delete_branch=True)
 
 
+def test_stage_commit_formats_code_files_before_commit(tmp_path: Path) -> None:
+    root = repo(tmp_path)
+    worktree, _ = create_attempt_worktree(root, "run-1", "E1-F01", "tests", 1)
+    (worktree / "a.test.ts").write_text("x\n", encoding="utf-8")
+    (worktree / "notes.md").write_text("x\n", encoding="utf-8")
+    formatter = [
+        "python3", "-c",
+        "import sys,pathlib;[pathlib.Path(a).write_text('formatado\\n') for a in sys.argv[1:]]",
+    ]
+    commit_attempt(
+        worktree,
+        allowed_paths=["a.test.ts", "notes.md"],
+        feature_id="E1-F01",
+        stage="tests",
+        attempt=1,
+        format_command=formatter,
+    )
+    assert git_output(worktree, "show", "HEAD:a.test.ts") == "formatado"
+    assert git_output(worktree, "show", "HEAD:notes.md") == "x"
+    remove_attempt_worktree(root, worktree, delete_branch=True)
+
+
 def test_stage_commit_rejects_changes_outside_scope(tmp_path: Path) -> None:
     root = repo(tmp_path)
     worktree, _ = create_attempt_worktree(root, "run-1", "E1-F01", "implement", 1)

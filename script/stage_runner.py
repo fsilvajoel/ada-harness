@@ -596,6 +596,9 @@ def run_configured_stage(
     if not gate_command:
         raise StageRunnerError(f"commands.{gate_name} vazio")
 
+    raw_format = commands.get("format-write")
+    format_command = shlex.split(raw_format) if isinstance(raw_format, str) and raw_format.strip() else None
+
     workers = _config_map(config, "workers")
     event_path = root / ".harness" / "runs" / run_id / feature_id / "events.jsonl"
     evidence_root = root / ".harness" / "runs" / run_id / feature_id / "evidence"
@@ -787,6 +790,7 @@ def run_configured_stage(
             feature_id=feature_id,
             stage=stage,
             attempt=attempt,
+            format_command=format_command,
         ),
         record_attempt=record_attempt,
     )

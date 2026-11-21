@@ -38,7 +38,12 @@ implementação e tem de falhar contra o esboço; se passar sem implementação,
    Teste o que quem chama observa; nunca classe de estilo, estrutura interna ou ordem de chamadas
    ([princípios](../../capability/testing.md#princípios)). Arquivo dispensado no plano (`exemptSources`) não
    recebe teste; lógica dentro dele é erro do plano: devolva ao orquestrador.
-9. **Escreva só no arquivo de teste.** O arquivo de implementação (esboço criado pelo orquestrador) fica intocado.
+9. **Stubs tipados dos módulos ausentes.** Se o teste importa módulo que ainda não existe, crie nesse caminho
+   um esboço tipado mínimo (assinaturas e tipos exportados do contrato, corpo `throw new Error("esboço: não
+   implementado")`, sem `any`), para o eslint e o `tsc` resolverem os tipos e o hook de commit passar sem ser
+   afrouxado. Só stubs de módulos inexistentes; nunca altere arquivo de implementação já existente. O harness roda o
+   formatador (`commands.format-write`) nos arquivos de código antes do commit.
+   **Escreva só nos arquivos de teste e nesses stubs.** O arquivo de implementação (esboço criado pelo orquestrador) fica intocado.
 10. **Expect-red.** Rode `pnpm gate expect-red <feature>` contra o esboço: todos os testes novos falham
    pela asserção ou pelo erro do esboço, não por sintaxe, import ou tipo (gate [expect-red](../../gate/expect-red.md)).
 11. Registre arquivo, cenários (com camada), classificação, checklist de bordas e resultado em [testes.md](../../workflow/feature-artefatos/testes.md).
