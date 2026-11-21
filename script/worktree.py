@@ -115,6 +115,7 @@ def commit_attempt(
     stage: str,
     attempt: int,
     format_command: list[str] | None = None,
+    new_only_paths: list[str] | None = None,
 ) -> str:
     if not allowed_paths or any(not _safe_path(path) for path in allowed_paths):
         raise WorktreeError("allowed_paths precisa conter paths relativos e seguros")
@@ -125,8 +126,16 @@ def commit_attempt(
     ):
         raise WorktreeError("feature_id, stage ou attempt inválidos")
 
-    status = git(worktree, "status", "--porcelain", "--untracked-files=all", "-z")
+    # sem strip: o primeiro código pode começar com espaço (" M path") e o strip deslocaria o path
+    raw = subprocess.run(
+        ["git", "-C", str(worktree), "status", "--porcelain", "--untracked-files=all", "-z"],
+        check=False, capture_output=True, text=True,
+    )
+    if raw.returncode != 0:
+        raise WorktreeError((raw.stderr or raw.stdout).strip())
+    status = raw.stdout
     changed: list[str] = []
+    untracked: set[str] = set()
     for entry in status.split("\0"):
         if not entry:
             continue
@@ -134,12 +143,20 @@ def commit_attempt(
         if not separator or code.strip() in {"R", "C"} or "\n" in path:
             raise WorktreeError("rename/copy ou path ambíguo bloqueado no commit da stage")
         changed.append(path)
+        if code == "??":
+            untracked.add(path)
     outside = [
         path for path in changed
         if not any(_path_matches(path, allowed) for allowed in allowed_paths)
     ]
     if outside:
         raise WorktreeError(f"arquivos alterados fora de allowedPaths: {', '.join(outside)}")
+    protected = [
+        path for path in changed
+        if path not in untracked and any(_path_matches(path, entry) for entry in new_only_paths or [])
+    ]
+    if protected:
+        raise WorktreeError(f"stub só pode criar arquivo novo; alterados: {', '.join(protected)}")
     if not changed:
         return git(worktree, "rev-parse", "HEAD")
 

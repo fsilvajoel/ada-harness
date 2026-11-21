@@ -560,6 +560,7 @@ def run_configured_stage(
     allowed_paths: list[str],
     skills: list[str] | None = None,
     mode: str = "write",
+    stub_paths: list[str] | None = None,
 ) -> StageResult:
     root = project_root.resolve()
     if not re.fullmatch(r"[A-Za-z0-9._-]+", run_id) or not re.fullmatch(
@@ -791,6 +792,7 @@ def run_configured_stage(
             stage=stage,
             attempt=attempt,
             format_command=format_command,
+            new_only_paths=stub_paths,
         ),
         record_attempt=record_attempt,
     )

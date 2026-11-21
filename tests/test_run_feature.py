@@ -527,3 +527,27 @@ def test_build_contract_is_deterministic(project: tuple[Path, Path], tmp_path: P
     assert first == second
     tests_stage = next(entry for entry in first[0]["stages"] if entry["stage"] == "tests")  # type: ignore[union-attr]
     assert tests_stage["cards"] == ["E1-F01-T01"]
+
+
+def test_build_contract_adds_stub_paths_from_implement_cards(project: tuple[Path, Path]) -> None:
+    repo, control = project
+    plan_dir = repo / "docs" / "plano" / FEATURE
+    plan_dir.mkdir(parents=True)
+    (plan_dir / "plan.json").write_text((control / "plan.json").read_text(encoding="utf-8"), encoding="utf-8")
+    (repo / "docs" / "plano" / f"{FEATURE}.yaml").write_text(CARDS, encoding="utf-8")
+    config = load_config(repo, required=True)
+    section = config["feature_contract"]
+    assert isinstance(section, dict) and isinstance(section["stages"], dict)
+    section["stages"]["tests"]["stubsFrom"] = "implement"
+    contract, _ = build_contract(
+        repo,
+        feature_id=FEATURE,
+        config=config,
+        plan_path=plan_dir / "plan.json",
+        cards_path=repo / "docs" / "plano" / f"{FEATURE}.yaml",
+        request_dir=Path(".harness/requests"),
+    )
+    tests_stage = next(entry for entry in contract["stages"] if entry["stage"] == "tests")  # type: ignore[union-attr]
+    assert tests_stage["stubPaths"] == ["src/filter.py"]
+    assert "src/filter.py" in tests_stage["allowedPaths"]
+    assert lint_contract(contract, config) == []
