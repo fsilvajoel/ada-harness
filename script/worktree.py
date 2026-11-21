@@ -139,7 +139,7 @@ def commit_attempt(
         "commit.gpgsign=false",
         "commit",
         "-m",
-        f"chore(harness): {feature_id} {stage} attempt {attempt}",
+        f"chore(harness): {feature_id.lower()} {stage} attempt {attempt}",
     )
     return git(worktree, "rev-parse", "HEAD")
 
