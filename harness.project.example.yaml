@@ -77,6 +77,7 @@ commands:
   lint: <lint>
   format: <formatação>
   format-write: <formatador in-place, opcional, ex. prettier --write>
+  lint-fix: <opcional, roda antes do format-write, ex. eslint --fix>
   verify: <verificação completa>
 
 # Ferramentas e limites dos gates mutacao e e2e (gate/mutacao.md, gate/e2e.md). Mapas inline.
