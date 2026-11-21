@@ -14,7 +14,7 @@ sys.path.insert(0, str(ROOT))
 
 from script.events import read_events
 from script.pipeline import STAGES, finish_stage, latest_commit_sha, replay, start_stage
-from script.stage_runner import CommandResult, _worker_usage, run_configured_stage, run_stage
+from script.stage_runner import CommandResult, _worker_usage, run_command, run_configured_stage, run_stage
 from script.worktree import commit_attempt, create_attempt_worktree, remove_attempt_worktree
 
 
@@ -370,3 +370,9 @@ def git(repo: Path, *args: str) -> None:
         capture_output=True,
         text=True,
     )
+
+
+def test_run_command_exports_harness_dir(tmp_path: Path) -> None:
+    result = run_command(["sh", "-c", 'test -f "$ADA_HARNESS_DIR/script/stage_runner.py" && echo ok'], cwd=tmp_path, timeout_s=10)
+    assert result.exit_code == 0
+    assert "ok" in result.output

@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import shlex
 import subprocess
@@ -538,6 +539,7 @@ def run_command(command: list[str], *, cwd: Path, timeout_s: int) -> CommandResu
             capture_output=True,
             text=True,
             timeout=timeout_s,
+            env={**os.environ, "ADA_HARNESS_DIR": str(Path(__file__).resolve().parents[1])},
         )
     except subprocess.TimeoutExpired as exc:
         stdout = exc.stdout.decode(errors="replace") if isinstance(exc.stdout, bytes) else exc.stdout or ""
