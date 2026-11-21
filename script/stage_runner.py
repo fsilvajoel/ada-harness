@@ -597,8 +597,12 @@ def run_configured_stage(
     if not gate_command:
         raise StageRunnerError(f"commands.{gate_name} vazio")
 
-    raw_format = commands.get("format-write")
-    format_command = shlex.split(raw_format) if isinstance(raw_format, str) and raw_format.strip() else None
+    # Antes do commit: primeiro lint-fix (eslint --fix), depois format-write (prettier --write), nesta ordem.
+    format_commands = [
+        shlex.split(raw)
+        for raw in (commands.get("lint-fix"), commands.get("format-write"))
+        if isinstance(raw, str) and raw.strip()
+    ]
 
     workers = _config_map(config, "workers")
     event_path = root / ".harness" / "runs" / run_id / feature_id / "events.jsonl"
@@ -791,7 +795,8 @@ def run_configured_stage(
             feature_id=feature_id,
             stage=stage,
             attempt=attempt,
-            format_command=format_command,
+            format_commands=format_commands,
+            keep_on_failure=evidence_root / stage / str(attempt) / "failed-commit",
             new_only_paths=stub_paths,
         ),
         record_attempt=record_attempt,

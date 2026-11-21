@@ -92,7 +92,7 @@ def create_attempt_worktree(
 FORMAT_SUFFIXES = (".ts", ".tsx", ".mts", ".cts", ".js", ".mjs", ".cjs", ".json")
 
 
-def _format_changed(worktree: Path, format_command: list[str], changed: list[str]) -> None:
+def _format_changed(worktree: Path, format_commands: list[list[str]], changed: list[str]) -> None:
     """Formata (ex.: `prettier --write`) os arquivos de código alterados antes do commit; o hook segue ligado."""
     targets = [
         path for path in changed
@@ -100,11 +100,12 @@ def _format_changed(worktree: Path, format_command: list[str], changed: list[str
     ]
     if not targets:
         return
-    result = subprocess.run(
-        [*format_command, *targets], cwd=worktree, check=False, capture_output=True, text=True, timeout=300
-    )
-    if result.returncode != 0:
-        raise WorktreeError(f"format-write falhou: {(result.stderr or result.stdout).strip()}")
+    for command in format_commands:
+        result = subprocess.run(
+            [*command, *targets], cwd=worktree, check=False, capture_output=True, text=True, timeout=300
+        )
+        if result.returncode != 0:
+            raise WorktreeError(f"{' '.join(command)} falhou: {(result.stderr or result.stdout).strip()}")
 
 
 def commit_attempt(
@@ -114,7 +115,8 @@ def commit_attempt(
     feature_id: str,
     stage: str,
     attempt: int,
-    format_command: list[str] | None = None,
+    format_commands: list[list[str]] | None = None,
+    keep_on_failure: Path | None = None,
     new_only_paths: list[str] | None = None,
 ) -> str:
     if not allowed_paths or any(not _safe_path(path) for path in allowed_paths):
@@ -160,14 +162,34 @@ def commit_attempt(
     if not changed:
         return git(worktree, "rev-parse", "HEAD")
 
-    if format_command:
-        _format_changed(worktree, format_command, changed)
+    if format_commands:
+        _format_changed(worktree, format_commands, changed)
 
     # Só os paths alterados (já validados contra allowedPaths): um allowedPath ainda inexistente não quebra o commit.
     git(worktree, "add", "-A", "--", *changed)
     branch = git(worktree, "branch", "--show-current")
     if not branch.startswith("harness/"):
         raise WorktreeError("commit de stage permitido apenas em branch harness/*")
+    try:
+        _commit(worktree, feature_id, stage, attempt)
+    except WorktreeError:
+        if keep_on_failure is not None:
+            _keep_files(worktree, changed, keep_on_failure)
+        raise
+    return git(worktree, "rev-parse", "HEAD")
+
+
+def _keep_files(worktree: Path, changed: list[str], destination: Path) -> None:
+    """Guarda cópia dos arquivos da tentativa que o hook recusou (a worktree é descartada em seguida)."""
+    for path in changed:
+        source = worktree / path
+        if source.is_file():
+            target = destination / path
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(source.read_bytes())
+
+
+def _commit(worktree: Path, feature_id: str, stage: str, attempt: int) -> None:
     git(
         worktree,
         "-c",
@@ -180,7 +202,6 @@ def commit_attempt(
         "-m",
         f"chore(harness): {feature_id.lower()} {stage} attempt {attempt}",
     )
-    return git(worktree, "rev-parse", "HEAD")
 
 
 def remove_attempt_worktree(

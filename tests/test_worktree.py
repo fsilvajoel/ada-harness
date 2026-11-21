@@ -123,7 +123,7 @@ def test_stage_commit_formats_code_files_before_commit(tmp_path: Path) -> None:
         feature_id="E1-F01",
         stage="tests",
         attempt=1,
-        format_command=formatter,
+        format_commands=[formatter],
     )
     assert git_output(worktree, "show", "HEAD:a.test.ts") == "formatado"
     assert git_output(worktree, "show", "HEAD:notes.md") == "x"
@@ -144,6 +144,24 @@ def test_stage_commit_stub_paths_accept_only_new_files(tmp_path: Path) -> None:
             worktree, allowed_paths=["stub.ts"], feature_id="E1-F01", stage="tests", attempt=2,
             new_only_paths=["stub.ts"],
         )
+    remove_attempt_worktree(root, worktree, force=True, delete_branch=True)
+
+
+def test_stage_commit_keeps_files_when_hook_rejects(tmp_path: Path) -> None:
+    root = repo(tmp_path)
+    worktree, _ = create_attempt_worktree(root, "run-1", "E1-F01", "tests", 1)
+    hook = Path(git_output(worktree, "rev-parse", "--git-path", "hooks")) / "pre-commit"
+    hook = hook if hook.is_absolute() else worktree / hook
+    hook.parent.mkdir(parents=True, exist_ok=True)
+    hook.write_text("#!/bin/sh\nexit 1\n", encoding="utf-8")
+    hook.chmod(0o755)
+    (worktree / "a.ts").write_text("x\n", encoding="utf-8")
+    keep = tmp_path / "keep"
+    with pytest.raises(WorktreeError):
+        commit_attempt(
+            worktree, allowed_paths=["a.ts"], feature_id="E1-F01", stage="tests", attempt=1, keep_on_failure=keep
+        )
+    assert (keep / "a.ts").read_text(encoding="utf-8") == "x\n"
     remove_attempt_worktree(root, worktree, force=True, delete_branch=True)
 
 
