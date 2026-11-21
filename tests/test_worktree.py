@@ -103,7 +103,8 @@ def test_stage_commit_is_scoped_and_has_required_trailer(tmp_path: Path) -> None
     )
     message = git_output(worktree, "log", "-1", "--pretty=%B")
     assert len(commit_sha) == 40
-    assert "Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>" in message
+    assert message.startswith("chore(harness): E1-F01 implement attempt 1")
+    assert "Copilot" not in message
     remove_attempt_worktree(root, worktree, delete_branch=True)
 
 

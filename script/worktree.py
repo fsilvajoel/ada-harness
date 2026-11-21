@@ -132,16 +132,14 @@ def commit_attempt(
     git(
         worktree,
         "-c",
-        "user.name=Copilot",
+        "user.name=Ada Harness",
         "-c",
-        "user.email=223556219+Copilot@users.noreply.github.com",
+        "user.email=harness@ada.local",
         "-c",
         "commit.gpgsign=false",
         "commit",
         "-m",
-        f"Harness: {feature_id} {stage} attempt {attempt}",
-        "-m",
-        "Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>",
+        f"chore(harness): {feature_id} {stage} attempt {attempt}",
     )
     return git(worktree, "rev-parse", "HEAD")
 
