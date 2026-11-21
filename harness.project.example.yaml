@@ -56,9 +56,9 @@ role_skills:
 
 # Gate card-skills (gate/card-skills.md): cartões em `cards_glob` cujo allowedPaths toca um prefixo de
 # `skills_required_paths` precisam declarar `skills:`, e cada item precisa existir em skill_dir.
-cards_glob: <glob dos arquivos de cartões, ex.: docs/plano/E*.yaml>
+cards_glob: "<glob dos arquivos de cartões, ex.: docs/plano/E*.yaml>"
 skills_required_paths:
-  - <prefixo de caminho, ex.: o app web>
+  - "<prefixo de caminho, ex.: o app web>"
 
 # Teto (bytes) do bloco de skills e regras injetado no pedido (padrão 40000); acima dele o executor falha.
 skills_max_bytes: 40000
@@ -80,7 +80,7 @@ commands:
 
 # Ferramentas e limites dos gates mutacao e e2e (gate/mutacao.md, gate/e2e.md). Mapas inline.
 gates:
-  mutation: {tool: <ferramenta de mutação>, min_score: <score mínimo, 0 a 100>}
+  mutation: {tool: <ferramenta de mutação>, min_score: <score mínimo de 0 a 100>}
   e2e: {tool: <ferramenta e2e>}
 
 # Revisão visual (onda 3): roda no finalReview quando o plano tem fonte dispensa-estilo/dispensa-biblioteca.
@@ -89,8 +89,8 @@ gates:
 # Sem esta seção, feature visual FALHA no finalReview (nunca PASS sem evidência). Não coloque token no target:
 # query, fragmento e credenciais são removidos da evidência.
 visual_review:
-  command: <comando, ex.: node scripts/visual-check.mjs --url {target} --criterion {criterion} --shot {screenshot} --report {report}>
-  target: <URL local da tela, ex.: http://localhost:5173>
+  command: "<comando, ex.: node scripts/visual-check.mjs --url {target} --criterion {criterion} --shot {screenshot} --report {report}>"
+  target: "<URL local da tela, ex.: http://localhost:5173>"
   timeout_s: 120
 
 # Contrato de feature (onda 5): consumido por script/feature_contract.py e script/run_feature.py.
