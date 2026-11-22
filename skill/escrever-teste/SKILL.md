@@ -43,10 +43,21 @@ implementação e tem de falhar contra o esboço; se passar sem implementação,
    implementado")`, sem `any`), para o eslint e o `tsc` resolverem os tipos e o hook de commit passar sem ser
    afrouxado. Só stubs de módulos inexistentes; nunca altere arquivo de implementação já existente. O harness roda o
    formatador (`commands.format-write`) nos arquivos de código antes do commit.
+   O barrel `index.ts` do pacote, se já existe, pode ganhar só linhas novas de re-export
+   (`export * from './x'`, `export { X } from './x'`, `export type { X } from './x'`) para o módulo novo ficar
+   importável; qualquer outra alteração nele é recusada no commit.
    **Escreva só nos arquivos de teste e nesses stubs.** O arquivo de implementação (esboço criado pelo orquestrador) fica intocado.
 10. **Expect-red.** Rode `pnpm gate expect-red <feature>` contra o esboço: todos os testes novos falham
    pela asserção ou pelo erro do esboço, não por sintaxe, import ou tipo (gate [expect-red](../../gate/expect-red.md)).
 11. Registre arquivo, cenários (com camada), classificação, checklist de bordas e resultado em [testes.md](../../workflow/feature-artefatos/testes.md).
+
+## Regras que o hook de commit aplica
+
+O commit roda o lint e a checagem de qualidade de testes; o worker não roda shell, então descobriria isto só na
+recusa. Escreva já certo:
+
+- Nunca `toBeDefined()`/`toBeTruthy()` vazio como asserção: afirme o valor ou a propriedade esperada (regra Q1).
+- Em template literal, número entra convertido: `` `${String(n)}` `` (eslint `restrict-template-expressions`).
 
 ## Limitações
 
