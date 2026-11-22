@@ -165,6 +165,17 @@ def test_stage_commit_keeps_files_when_hook_rejects(tmp_path: Path) -> None:
     remove_attempt_worktree(root, worktree, force=True, delete_branch=True)
 
 
+def test_format_exit_one_does_not_block_commit(tmp_path: Path) -> None:
+    root = repo(tmp_path)
+    worktree, _ = create_attempt_worktree(root, "run-1", "E1-F01", "tests", 1)
+    (worktree / "a.ts").write_text("x\n", encoding="utf-8")
+    commit_attempt(
+        worktree, allowed_paths=["a.ts"], feature_id="E1-F01", stage="tests", attempt=1,
+        format_commands=[["python3", "-c", "import sys; sys.exit(1)"]],
+    )
+    remove_attempt_worktree(root, worktree, delete_branch=True)
+
+
 def test_stage_commit_rejects_changes_outside_scope(tmp_path: Path) -> None:
     root = repo(tmp_path)
     worktree, _ = create_attempt_worktree(root, "run-1", "E1-F01", "implement", 1)
