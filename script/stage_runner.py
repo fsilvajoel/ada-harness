@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 import argparse
 import json
 import os
@@ -548,6 +549,36 @@ def run_command(command: list[str], *, cwd: Path, timeout_s: int) -> CommandResu
     return CommandResult(result.returncode, result.stdout + result.stderr)
 
 
+_ANSI_RE = re.compile(r"\x1b\[[0-9;]*m")
+FEEDBACK_LIMIT = 3000
+
+
+def _request_with_feedback(
+    request: Path, events: Sequence[Mapping[str, object]], run_id: str, feature_id: str, stage: str, directory: Path
+) -> Path:
+    """Se a última tentativa da stage falhou no commit/gate, copia o request somando o motivo (o original não muda)."""
+    reasons = [
+        str(event.get("reason"))
+        for event in events
+        if event.get("run_id") == run_id and event.get("feature_id") == feature_id
+        and event.get("stage") == stage and event.get("event") == "stage_failed"
+        and str(event.get("reason", "")).startswith(("commit-error", "gate"))
+    ]
+    if not reasons:
+        return request.resolve()
+    reason = _ANSI_RE.sub("", reasons[-1])
+    reason = reason[:FEEDBACK_LIMIT]
+    target = directory / "request-retry.md"
+    target.write_text(
+        request.read_text(encoding="utf-8")
+        + "\n## Falha da tentativa anterior (corrija sem afrouxar nenhuma regra)\n\n```text\n"
+        + reason
+        + "\n```\n",
+        encoding="utf-8",
+    )
+    return target.resolve()
+
+
 def run_configured_stage(
     project_root: Path,
     *,
@@ -622,6 +653,7 @@ def run_configured_stage(
         attempt = int(worktree.name)
         meta_path = evidence_root / stage / str(attempt) / "engine-meta.json"
         meta_path.parent.mkdir(parents=True, exist_ok=True)
+        request_path = _request_with_feedback(request, read_events(event_path), run_id, feature_id, stage, meta_path.parent)
         command = [
             sys.executable,
             str(Path(__file__).with_name("dispatch.py")),
@@ -635,7 +667,7 @@ def run_configured_stage(
             "--stage",
             stage,
             "--request",
-            str(request.resolve()),
+            str(request_path),
             "--cwd",
             str(worktree),
             "--meta",

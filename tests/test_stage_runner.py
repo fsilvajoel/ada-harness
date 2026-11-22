@@ -376,3 +376,18 @@ def test_run_command_exports_harness_dir(tmp_path: Path) -> None:
     result = run_command(["sh", "-c", 'test -f "$ADA_HARNESS_DIR/script/stage_runner.py" && echo ok'], cwd=tmp_path, timeout_s=10)
     assert result.exit_code == 0
     assert "ok" in result.output
+
+
+def test_retry_request_carries_previous_commit_failure(tmp_path: Path) -> None:
+    from script.stage_runner import _request_with_feedback
+
+    request = tmp_path / "tests.md"
+    request.write_text("# pedido\n", encoding="utf-8")
+    base = {"run_id": "r", "feature_id": "E1-F01", "stage": "tests"}
+    assert _request_with_feedback(request, [], "r", "E1-F01", "tests", tmp_path) == request.resolve()
+    events = [{**base, "event": "stage_failed", "reason": "commit-error: \x1b[31mQ1 toBeDefined() sempre passa\x1b[m"}]
+    result = _request_with_feedback(request, events, "r", "E1-F01", "tests", tmp_path)
+    text = result.read_text(encoding="utf-8")
+    assert text.startswith("# pedido\n")
+    assert "Q1 toBeDefined() sempre passa" in text and "\x1b" not in text
+    assert request.read_text(encoding="utf-8") == "# pedido\n"
