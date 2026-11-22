@@ -104,7 +104,8 @@ def _format_changed(worktree: Path, format_commands: list[list[str]], changed: l
         result = subprocess.run(
             [*command, *targets], cwd=worktree, check=False, capture_output=True, text=True, timeout=300
         )
-        if result.returncode != 0:
+        # exit 1 = sobraram erros que não se corrigem sozinhos (eslint): o hook de commit é quem decide; >1 = falha real
+        if result.returncode > 1:
             raise WorktreeError(f"{' '.join(command)} falhou: {(result.stderr or result.stdout).strip()}")
 
 
@@ -162,8 +163,13 @@ def commit_attempt(
     if not changed:
         return git(worktree, "rev-parse", "HEAD")
 
-    if format_commands:
-        _format_changed(worktree, format_commands, changed)
+    try:
+        if format_commands:
+            _format_changed(worktree, format_commands, changed)
+    except WorktreeError:
+        if keep_on_failure is not None:
+            _keep_files(worktree, changed, keep_on_failure)
+        raise
 
     # Só os paths alterados (já validados contra allowedPaths): um allowedPath ainda inexistente não quebra o commit.
     git(worktree, "add", "-A", "--", *changed)
