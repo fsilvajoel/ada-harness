@@ -147,6 +147,61 @@ def test_stage_commit_stub_paths_accept_only_new_files(tmp_path: Path) -> None:
     remove_attempt_worktree(root, worktree, force=True, delete_branch=True)
 
 
+def _barrel_worktree(tmp_path: Path) -> tuple[Path, Path]:
+    root = repo(tmp_path)
+    (root / "pkg").mkdir()
+    (root / "pkg" / "index.ts").write_text("export * from './a';\nexport const x = 1;\n", encoding="utf-8")
+    (root / "pkg" / "other.ts").write_text("export const a = 1;\n", encoding="utf-8")
+    git(root, "add", "pkg")
+    git(root, "commit", "-m", "barrel")
+    worktree, _ = create_attempt_worktree(root, "run-1", "E1-F01", "tests", 1)
+    return root, worktree
+
+
+def _commit_barrel(worktree: Path) -> str:
+    return commit_attempt(
+        worktree, allowed_paths=["pkg/*"], feature_id="E1-F01", stage="tests", attempt=1,
+        new_only_paths=["pkg/*"],
+    )
+
+
+def test_stage_commit_stub_barrel_accepts_appended_reexports(tmp_path: Path) -> None:
+    root, worktree = _barrel_worktree(tmp_path)
+    (worktree / "pkg" / "index.ts").write_text(
+        "export * from './a';\nexport const x = 1;\n"
+        "export * from './b';\nexport { Y } from './y';\nexport type { Z } from \"./z\";\n"
+        "export {\n  W,\n} from './w';\n",
+        encoding="utf-8",
+    )
+    _commit_barrel(worktree)
+    remove_attempt_worktree(root, worktree, force=True, delete_branch=True)
+
+
+@pytest.mark.parametrize(
+    "content",
+    [
+        "export * from './a';\nexport * from './b';\n",
+        "export * from './a2';\nexport const x = 1;\n",
+        "export * from './a';\nexport const x = 1;\nexport const y = 2;\n",
+        "export * from './a';\nexport const x = 1;\nexport * from './b'; foo();\n",
+    ],
+)
+def test_stage_commit_stub_barrel_rejects_other_changes(tmp_path: Path, content: str) -> None:
+    root, worktree = _barrel_worktree(tmp_path)
+    (worktree / "pkg" / "index.ts").write_text(content, encoding="utf-8")
+    with pytest.raises(WorktreeError, match="arquivo novo"):
+        _commit_barrel(worktree)
+    remove_attempt_worktree(root, worktree, force=True, delete_branch=True)
+
+
+def test_stage_commit_stub_non_barrel_existing_file_still_rejected(tmp_path: Path) -> None:
+    root, worktree = _barrel_worktree(tmp_path)
+    (worktree / "pkg" / "other.ts").write_text("export const a = 1;\nexport * from './b';\n", encoding="utf-8")
+    with pytest.raises(WorktreeError, match="arquivo novo"):
+        _commit_barrel(worktree)
+    remove_attempt_worktree(root, worktree, force=True, delete_branch=True)
+
+
 def test_stage_commit_keeps_files_when_hook_rejects(tmp_path: Path) -> None:
     root = repo(tmp_path)
     worktree, _ = create_attempt_worktree(root, "run-1", "E1-F01", "tests", 1)
