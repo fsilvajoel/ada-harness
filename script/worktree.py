@@ -109,6 +109,44 @@ def _format_changed(worktree: Path, format_commands: list[list[str]], changed: l
             raise WorktreeError(f"{' '.join(command)} falhou: {(result.stderr or result.stdout).strip()}")
 
 
+_REEXPORT = (
+    r"export\s+(?:type\s+)?(?:\*(?:\s+as\s+\w+)?|\{[^{}]*\})\s+from\s+(['\"])[^'\"\n]+\1\s*;?"
+)
+
+
+def _only_appends_reexports(worktree: Path, path: str) -> bool:
+    """Barrel (index.ts) existente só pode ganhar linhas `export ... from '...'`; nada mais muda."""
+    if Path(path).name != "index.ts":
+        return False
+    shown = subprocess.run(
+        ["git", "-C", str(worktree), "show", f"HEAD:{path}"], check=False, capture_output=True, text=True
+    )
+    current = worktree / path
+    if shown.returncode != 0 or not current.is_file():
+        return False
+    old = shown.stdout.splitlines()
+    new = current.read_text(encoding="utf-8").splitlines()
+    extras: list[list[str]] = []
+    cursor = 0
+    previous_extra = False
+    for line in new:
+        if cursor < len(old) and line == old[cursor]:
+            cursor += 1
+            previous_extra = False
+            continue
+        if not previous_extra:
+            extras.append([])
+        extras[-1].append(line)
+        previous_extra = True
+    if cursor != len(old):
+        return False
+    for block in extras:
+        text = "\n".join(block).strip()
+        if text and re.fullmatch(rf"(?:{_REEXPORT}\s*)+", text) is None:
+            return False
+    return True
+
+
 def commit_attempt(
     worktree: Path,
     *,
@@ -156,7 +194,9 @@ def commit_attempt(
         raise WorktreeError(f"arquivos alterados fora de allowedPaths: {', '.join(outside)}")
     protected = [
         path for path in changed
-        if path not in untracked and any(_path_matches(path, entry) for entry in new_only_paths or [])
+        if path not in untracked
+        and any(_path_matches(path, entry) for entry in new_only_paths or [])
+        and not _only_appends_reexports(worktree, path)
     ]
     if protected:
         raise WorktreeError(f"stub só pode criar arquivo novo; alterados: {', '.join(protected)}")
