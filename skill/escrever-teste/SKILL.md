@@ -27,6 +27,9 @@ implementação e tem de falhar contra o esboço; se passar sem implementação,
    `toBeDefined` ou `not.toThrow` como única prova do cenário.
 5. **Dados isolados.** Copie fixtures com `structuredClone(base)`, não `JSON.parse(JSON.stringify(base))`
    (o round-trip perde `Date`, `undefined`, `Map`, `BigInt`).
+   Se o pacote não tipa `structuredClone` (lib sem DOM nem `@types/node`: o `tsc` acusa "Cannot find name" e o eslint
+   reporta `no-unsafe-call` em cascata), use uma função fábrica que devolve o objeto novo a cada chamada
+   (`const makeBase = () => ({ ... })`), nunca `JSON.parse(JSON.stringify(...))`.
 6. **Checklist de bordas.** Para cada entrada da tabela de domínio do plano, cubra vazio, só espaços, espaços em
    volta, `1e1`, separador errado, negativo, zero, limite, limite+1, muito grande e caractere inválido, ou anote em
    `testes.md` por que o item não se aplica ([checklist](../../capability/testing.md#checklist-de-bordas)).
