@@ -47,6 +47,16 @@ STATUS_BY_EXIT: Final[dict[int, str]] = {
 }
 SNIPPET: Final = 500
 
+# Bash restrito (opcional, desligado por padrão): `workers.<nome>.allowedBashCommands`, só no modo write.
+BASH_DENY_BASE: Final[tuple[str, ...]] = (
+    "curl", "wget", "nc", "ncat", "ssh", "scp", "rsync", "sudo", "su", "rm", "rmdir", "mv", "dd", "chmod", "chown",
+    "kill", "pkill", "bash", "sh", "zsh", "eval", "exec", "xargs", "env", "python", "python3", "node", "perl",
+    "git push", "git remote", "git config", "git reset", "git clean", "git checkout", "git branch -D",
+    "pnpm publish", "npm publish", "pnpm add", "pnpm install", "npm install", "pnpm dlx", "npx",
+)  # fmt: skip
+_FORBIDDEN_CHARS: Final = frozenset(";&|<>`$()\\{}\n\r")
+_DANGEROUS_WORDS: Final = frozenset(BASH_DENY_BASE) | {"cd", "source", "."}
+
 
 class RunError(Exception):
     def __init__(self, exit_code: int, message: str) -> None:
@@ -64,6 +74,7 @@ class Worker:
     usage_jq: str | None
     roles: list[str]
     timeout_s: float
+    allowed_bash: tuple[str, ...] = ()
 
 
 @dataclass
@@ -113,15 +124,75 @@ def load_worker(project_root: Path, name: str, mode: str) -> Worker:
         timeout_s = float(timeout)
     except ValueError as exc:
         raise RunError(EXIT_CONFIG, "timeout_s precisa ser número") from exc
+    allowed_bash = parse_allowed_bash(entry.get("allowedBashCommands")) if mode == "write" else ()
     return Worker(
         name=name,
         command=command,
-        args=shlex.split(raw_args),
+        args=bash_args(shlex.split(raw_args), allowed_bash),
         output_jq=_opt(entry, "output_jq"),
         usage_jq=_opt(entry, "usage_jq"),
         roles=(_opt(entry, "roles") or "").split(),
         timeout_s=timeout_s,
+        allowed_bash=allowed_bash,
     )
+
+
+def validate_bash_pattern(pattern: str) -> str:
+    """Valida um padrão de Bash permitido; levanta RunError(EXIT_CONFIG) se perigoso ou fora do escopo."""
+    text = pattern.strip()
+    if not text or text.startswith("*"):
+        raise RunError(EXIT_CONFIG, f"allowedBashCommands: padrão genérico demais: '{pattern}'")
+    if any(char in _FORBIDDEN_CHARS for char in text):
+        raise RunError(EXIT_CONFIG, f"allowedBashCommands: metacaractere de shell em '{pattern}'")
+    if ".." in text or text.startswith("/") or "~" in text or " /" in text:
+        raise RunError(EXIT_CONFIG, f"allowedBashCommands: caminho fora da worktree em '{pattern}'")
+    lowered = text.lower()
+    for word in _DANGEROUS_WORDS:
+        if lowered == word or lowered.startswith(word + " ") or lowered.startswith(word + "*"):
+            raise RunError(EXIT_CONFIG, f"allowedBashCommands: comando proibido '{word}' em '{pattern}'")
+    if " -c" in lowered or "--eval" in lowered or " -e " in lowered:
+        raise RunError(EXIT_CONFIG, f"allowedBashCommands: execução de código inline em '{pattern}'")
+    return text
+
+
+def parse_allowed_bash(raw: ConfigValue | None) -> tuple[str, ...]:
+    """Aceita lista YAML ou texto com padrões separados por vírgula; vazio = desligado."""
+    if raw is None:
+        return ()
+    items = raw if isinstance(raw, list) else str(raw).split(",")
+    patterns = [validate_bash_pattern(str(item)) for item in items if str(item).strip()]
+    return tuple(dict.fromkeys(patterns))
+
+
+def _extend_flag(args: list[str], flag: str, values: list[str], drop: frozenset[str] = frozenset()) -> list[str]:
+    """Acrescenta `values` à lista variádica de `flag` (criando-a se faltar), removendo itens de `drop`."""
+    out: list[str] = []
+    seen = False
+    in_flag = False
+    for token in args:
+        if token.startswith("-"):
+            in_flag = token == flag
+            if in_flag:
+                seen = True
+                out.append(token)
+                out.extend(values)
+                continue
+        elif in_flag and token in drop:
+            continue
+        out.append(token)
+    if not seen:
+        out.extend([flag, *values])
+    return out
+
+
+def bash_args(args: list[str], patterns: tuple[str, ...]) -> list[str]:
+    """Traduz os padrões para `--allowedTools Bash(...)` + negações explícitas (negar vence permitir no claude)."""
+    if not patterns:
+        return args
+    allow = [f"Bash({pattern})" for pattern in patterns]
+    deny = [f"Bash({word} *)" for word in BASH_DENY_BASE] + [f"Bash({word})" for word in BASH_DENY_BASE]
+    out = _extend_flag(args, "--allowedTools", allow)
+    return _extend_flag(out, "--disallowedTools", deny, drop=frozenset({"Bash"}))
 
 
 def jq_filter(expression: str, document: str) -> str:
