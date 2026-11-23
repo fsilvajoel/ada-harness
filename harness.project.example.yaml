@@ -124,3 +124,9 @@ checks:
   - card-skills
   - role-skills
   - artifact-lint
+
+# Retry (opcional). repair_from_previous (padrão false): se a tentativa anterior falhou por gate ou commit-error
+# (nunca por erro/timeout do worker), a nova worktree parte do diff dela (evidence/<stage>/<n>/repair.patch)
+# em vez do base_sha limpo. allowedPaths e stubs continuam validados no commit. Desligada: comportamento atual.
+# retry:
+#   repair_from_previous: true

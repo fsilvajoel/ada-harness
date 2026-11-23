@@ -406,3 +406,80 @@ def test_install_dependencies_failure_raises(tmp_path: Path) -> None:
 
     with pytest.raises(StageRunnerError, match="commands.install falhou"):
         install_dependencies(tmp_path, ["sh", "-c", "echo boom; exit 3"])
+
+
+def _failed(reason: str, attempt: int = 1, gate: str | None = "verify") -> dict[str, object]:
+    event: dict[str, object] = {
+        "run_id": "r", "feature_id": "E1-F01", "stage": "tests",
+        "event": "stage_failed", "reason": reason, "attempt": attempt,
+    }
+    if gate:
+        event["gate"] = gate
+    return event
+
+
+def test_retry_request_includes_truncated_gate_log(tmp_path: Path) -> None:
+    from script.stage_runner import GATE_LOG_LIMIT, _request_with_feedback
+
+    evidence = tmp_path / "evidence" / "tests"
+    (evidence / "1").mkdir(parents=True)
+    (evidence / "1" / "verify.log").write_text("INICIO-CORTADO\n" + "x" * 5000 + "\n\x1b[31mERRO-FINAL\x1b[m", encoding="utf-8")
+    request = tmp_path / "tests.md"
+    request.write_text("# pedido\n", encoding="utf-8")
+    out = _request_with_feedback(request, [_failed("gate-fail")], "r", "E1-F01", "tests", tmp_path, evidence)
+    text = out.read_text(encoding="utf-8")
+    assert "ERRO-FINAL" in text and "INICIO-CORTADO" not in text and "\x1b" not in text
+    assert "Corrija SOMENTE estes erros" in text
+    assert text.count("x") <= GATE_LOG_LIMIT + 200
+
+
+def test_retry_request_without_log_keeps_reason_only(tmp_path: Path) -> None:
+    from script.stage_runner import _request_with_feedback
+
+    request = tmp_path / "tests.md"
+    request.write_text("# pedido\n", encoding="utf-8")
+    out = _request_with_feedback(request, [_failed("gate-fail")], "r", "E1-F01", "tests", tmp_path, tmp_path / "nada")
+    text = out.read_text(encoding="utf-8")
+    assert "gate-fail" in text and "Log do gate" not in text
+    commit = _request_with_feedback(request, [_failed("commit-error: hook X", gate=None)], "r", "E1-F01", "tests", tmp_path)
+    assert "hook X" in commit.read_text(encoding="utf-8")
+
+
+def test_repair_patch_only_for_gate_or_commit_failure(tmp_path: Path) -> None:
+    from script.stage_runner import repair_patch_for
+
+    (tmp_path / "1").mkdir()
+    (tmp_path / "1" / "repair.patch").write_text("x", encoding="utf-8")
+    assert repair_patch_for([_failed("gate-fail")], "r", "E1-F01", "tests", tmp_path) == tmp_path / "1" / "repair.patch"
+    assert repair_patch_for([_failed("commit-error: x")], "r", "E1-F01", "tests", tmp_path) is not None
+    assert repair_patch_for([_failed("worker-error")], "r", "E1-F01", "tests", tmp_path) is None
+    assert repair_patch_for([_failed("timeout")], "r", "E1-F01", "tests", tmp_path) is None
+    assert repair_patch_for([], "r", "E1-F01", "tests", tmp_path) is None
+    assert repair_patch_for([_failed("gate-fail", attempt=2)], "r", "E1-F01", "tests", tmp_path) is None
+
+
+def test_save_and_apply_repair_patch_restores_previous_attempt(tmp_path: Path) -> None:
+    from script.stage_runner import apply_repair_patch, save_repair_patch
+
+    def init(path: Path) -> None:
+        subprocess.run(["git", "init", "-q", str(path)], check=True)
+        (path / "a.txt").write_text("base\n", encoding="utf-8")
+        subprocess.run(["git", "-C", str(path), "add", "."], check=True)
+        subprocess.run(["git", "-C", str(path), "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "b"], check=True)
+
+    first, second = tmp_path / "first", tmp_path / "second"
+    init(first)
+    init(second)
+    (first / "a.txt").write_text("base\nedit\n", encoding="utf-8")
+    (first / "new.txt").write_text("novo\n", encoding="utf-8")
+    patch = tmp_path / "ev" / "1" / "repair.patch"
+    save_repair_patch(first, patch)
+    apply_repair_patch(second, patch)
+    assert (second / "a.txt").read_text(encoding="utf-8") == "base\nedit\n"
+    assert (second / "new.txt").read_text(encoding="utf-8") == "novo\n"
+
+
+def test_retry_flag_parses_as_boolean() -> None:
+    from script.project_config import parse_config_text
+
+    assert parse_config_text("retry:\n  repair_from_previous: true\n")["retry"] == {"repair_from_previous": True}
