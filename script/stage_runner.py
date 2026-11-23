@@ -560,32 +560,107 @@ def install_dependencies(worktree: Path, install_command: list[str]) -> None:
 
 _ANSI_RE = re.compile(r"\x1b\[[0-9;]*m")
 FEEDBACK_LIMIT = 3000
+GATE_LOG_LIMIT = 3000  # cauda do log do gate repassada ao worker no retry
+
+
+def _gate_log_tail(evidence_dir: Path | None, event: Mapping[str, object]) -> str:
+    """Últimos GATE_LOG_LIMIT caracteres do log do gate da tentativa que falhou ('' se não houver)."""
+    gate, attempt = event.get("gate"), event.get("attempt")
+    if evidence_dir is None or not isinstance(gate, str) or not isinstance(attempt, int):
+        return ""
+    if not re.fullmatch(r"[A-Za-z0-9_-]+", gate):
+        return ""
+    log = evidence_dir / str(attempt) / f"{gate}.log"
+    if not log.is_file():
+        return ""
+    text = _ANSI_RE.sub("", log.read_text(encoding="utf-8", errors="replace")).strip()
+    return text[-GATE_LOG_LIMIT:]
 
 
 def _request_with_feedback(
-    request: Path, events: Sequence[Mapping[str, object]], run_id: str, feature_id: str, stage: str, directory: Path
+    request: Path,
+    events: Sequence[Mapping[str, object]],
+    run_id: str,
+    feature_id: str,
+    stage: str,
+    directory: Path,
+    evidence_dir: Path | None = None,
 ) -> Path:
-    """Se a última tentativa da stage falhou no commit/gate, copia o request somando o motivo (o original não muda)."""
-    reasons = [
-        str(event.get("reason"))
+    """Se a última tentativa da stage falhou no commit/gate, copia o request somando o motivo e o fim do log do gate (o original não muda)."""
+    failed = [
+        event
         for event in events
         if event.get("run_id") == run_id and event.get("feature_id") == feature_id
         and event.get("stage") == stage and event.get("event") == "stage_failed"
         and str(event.get("reason", "")).startswith(("commit-error", "gate"))
     ]
-    if not reasons:
+    if not failed:
         return request.resolve()
-    reason = _ANSI_RE.sub("", reasons[-1])
-    reason = reason[:FEEDBACK_LIMIT]
-    target = directory / "request-retry.md"
-    target.write_text(
+    last = failed[-1]
+    reason = _ANSI_RE.sub("", str(last.get("reason")))[:FEEDBACK_LIMIT]
+    log_tail = _gate_log_tail(evidence_dir, last)
+    body = (
         request.read_text(encoding="utf-8")
         + "\n## Falha da tentativa anterior (corrija sem afrouxar nenhuma regra)\n\n```text\n"
         + reason
-        + "\n```\n",
-        encoding="utf-8",
+        + "\n```\n"
     )
+    if log_tail:
+        body += (
+            f"\n## Log do gate da tentativa anterior (últimos {GATE_LOG_LIMIT} caracteres)\n\n"
+            "Corrija SOMENTE estes erros; não reescreva o que já passou.\n\n```text\n"
+            + log_tail
+            + "\n```\n"
+        )
+    elif reason.startswith("commit-error"):
+        body += "\nCorrija SOMENTE os erros acima; não reescreva o que já passou.\n"
+    target = directory / "request-retry.md"
+    target.write_text(body, encoding="utf-8")
     return target.resolve()
+
+
+REPAIR_PATCH = "repair.patch"
+
+
+def save_repair_patch(worktree: Path, destination: Path) -> None:
+    """Guarda o diff (inclui arquivos novos) da tentativa contra o HEAD dela, antes de a worktree ser descartada."""
+    subprocess.run(["git", "-C", str(worktree), "add", "-A"], check=False, capture_output=True)
+    diff = subprocess.run(
+        ["git", "-C", str(worktree), "diff", "--cached", "--binary", "HEAD"],
+        check=False, capture_output=True,
+    )
+    if diff.returncode == 0 and diff.stdout:
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination.write_bytes(diff.stdout)
+
+
+def repair_patch_for(
+    events: Sequence[Mapping[str, object]], run_id: str, feature_id: str, stage: str, evidence_dir: Path
+) -> Path | None:
+    """Patch da última tentativa, só se ela falhou por gate/commit-error (nunca worker-error, 429, timeout)."""
+    failed = [
+        event
+        for event in events
+        if event.get("run_id") == run_id and event.get("feature_id") == feature_id
+        and event.get("stage") == stage and event.get("event") in {"stage_failed", "stage_passed"}
+    ]
+    if not failed or failed[-1].get("event") != "stage_failed":
+        return None
+    last = failed[-1]
+    attempt = last.get("attempt")
+    if not str(last.get("reason", "")).startswith(("commit-error", "gate")) or not isinstance(attempt, int):
+        return None
+    patch = evidence_dir / str(attempt) / REPAIR_PATCH
+    return patch if patch.is_file() else None
+
+
+def apply_repair_patch(worktree: Path, patch: Path) -> None:
+    result = subprocess.run(
+        ["git", "-C", str(worktree), "apply", "--binary", str(patch)],
+        check=False, capture_output=True, text=True,
+    )
+    if result.returncode != 0:
+        raise StageRunnerError(f"patch de reparo não aplicou: {(result.stderr or result.stdout).strip()[-500:]}")
 
 
 def run_configured_stage(
@@ -652,9 +727,22 @@ def run_configured_stage(
 
     install_command = shlex.split(commands["install"]) if isinstance(commands.get("install"), str) else []
 
+    # retry.repair_from_previous (padrão false): a tentativa seguinte parte do diff da anterior quando ela falhou por gate/commit.
+    retry_config = _config_map(config, "retry")
+    repair_from_previous = retry_config.get("repair_from_previous") is True
+
+    def discard_attempt(path: Path) -> None:
+        if repair_from_previous:
+            save_repair_patch(path, evidence_root / stage / path.name / REPAIR_PATCH)
+        remove_attempt_worktree(root, path, force=True, delete_branch=True)
+
     def make_worktree(attempt: int) -> Path:
         path, _ = create_attempt_worktree(root, run_id, feature_id, stage, attempt, base_sha)
         install_dependencies(path, install_command)
+        if repair_from_previous:
+            patch = repair_patch_for(read_events(event_path), run_id, feature_id, stage, evidence_root / stage)
+            if patch is not None:
+                apply_repair_patch(path, patch)
         return path
 
     def run_worker(executor: str, worktree: Path) -> CommandResult:
@@ -665,7 +753,7 @@ def run_configured_stage(
         attempt = int(worktree.name)
         meta_path = evidence_root / stage / str(attempt) / "engine-meta.json"
         meta_path.parent.mkdir(parents=True, exist_ok=True)
-        request_path = _request_with_feedback(request, read_events(event_path), run_id, feature_id, stage, meta_path.parent)
+        request_path = _request_with_feedback(request, read_events(event_path), run_id, feature_id, stage, meta_path.parent, evidence_root / stage)
         command = [
             sys.executable,
             str(Path(__file__).with_name("dispatch.py")),
@@ -827,12 +915,7 @@ def run_configured_stage(
         run_gate=stage_gate,
         preflight=preflight,
         gate_policy=gate_policy,
-        cleanup_attempt=lambda path: remove_attempt_worktree(
-            root,
-            path,
-            force=True,
-            delete_branch=True,
-        ),
+        cleanup_attempt=discard_attempt,
         commit_success=lambda path, attempt: commit_attempt(
             path,
             allowed_paths=allowed_paths,
