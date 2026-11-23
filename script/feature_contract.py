@@ -38,7 +38,7 @@ STAGE_FIELDS: Final[frozenset[str]] = frozenset({
     "stage", "role", "executorChain", "maxAttempts", "request", "gate", "timeoutS", "allowedPaths", "skills",
     "mode", "cards", "applicable",
 })
-OPTIONAL_STAGE_FIELDS: Final[frozenset[str]] = frozenset({"stubPaths"})
+OPTIONAL_STAGE_FIELDS: Final[frozenset[str]] = frozenset({"stubPaths", "stageSha256"})
 DEFAULT_WORKER_TIMEOUT_S: Final[int] = 1800
 
 type Contract = dict[str, object]
@@ -269,6 +269,55 @@ def render_request(
     return "\n".join(lines)
 
 
+def _map(value: object) -> dict[str, object]:
+    return value if isinstance(value, dict) else {}
+
+
+def stage_config_sha256(
+    project_root: Path, config: dict[str, object], *, stage: str, role: str, chain: list[str], gate: str,
+    allowed_paths: list[str], skills: list[str],
+) -> str:
+    """SHA-256 só do que a stage consome: recorte do yaml, worker/fallbacks, gate e conteúdo das skills.
+
+    Comentários, workers fora da cadeia e skills de outras stages não entram no hash.
+    """
+    section = _map(config.get("feature_contract"))
+    roles, workers = _map(config.get("roles")), _map(config.get("workers"))
+    commands, gates = _map(config.get("commands")), _map(config.get("gates"))
+    role_skills = _map(config.get("role_skills")).get(role)
+    specs = [*(role_skills if isinstance(role_skills, list) else []), *skills]
+    configured = config.get("skill_dir")
+    base = (
+        (project_root / configured.strip()).resolve()
+        if isinstance(configured, str) and configured.strip()
+        else (Path(__file__).resolve().parents[1] / "skill").resolve()
+    )
+    skill_files: dict[str, str] = {}
+    for spec in dict.fromkeys(str(item).strip() for item in specs):
+        name, _, rule = spec.partition("#")
+        targets = [(f"{name}/SKILL.md", base / name / "SKILL.md")]
+        if rule:
+            rule_name = rule.removesuffix(".md")
+            targets.append((f"{name}/rules/{rule_name}.md", base / name / "rules" / f"{rule_name}.md"))
+        for label, path in targets:
+            ok = path.is_file() and path.resolve().is_relative_to(base)
+            skill_files[label] = sha256_file(path) if ok else "ausente"
+    slice_: dict[str, object] = {
+        "stage": stage,
+        "spec": _map(_map(section.get("stages")).get(stage)),
+        "role": roles.get(role),
+        "workers": {name: workers.get(name) for name in chain},
+        "gate": {"name": gate, "command": commands.get(gate), "config": gates.get(gate),
+                 "lint-fix": commands.get("lint-fix"), "format-write": commands.get("format-write"),
+                 "install": commands.get("install")},
+        "retry": config.get("retry"),
+        "pregate": config.get("pregate"),
+        "skills": {"specs": specs, "files": skill_files, "max_bytes": config.get("skills_max_bytes")},
+        "allowedPaths": allowed_paths,
+    }
+    return sha256_bytes(json.dumps(slice_, sort_keys=True, ensure_ascii=False, default=str).encode("utf-8"))
+
+
 def build_contract(
     project_root: Path,
     *,
@@ -347,6 +396,10 @@ def build_contract(
             "mode": stage_spec.mode,
             "cards": card_ids,
             "applicable": policy.get(stage, True),
+            "stageSha256": stage_config_sha256(
+                root, config, stage=stage, role=stage_spec.role, chain=chain, gate=stage_spec.gate,
+                allowed_paths=allowed, skills=skills,
+            ),
             **({"stubPaths": stub_paths} if stub_paths else {}),
         })
     contract: Contract = {
@@ -520,6 +573,10 @@ def lint_contract(contract: object, config: dict[str, object]) -> list[str]:
         skills = entry.get("skills")
         if not isinstance(skills, list) or any(not isinstance(skill, str) or not skill for skill in skills):
             errors.append(f"{label}.skills inválido")
+        if "stageSha256" in entry and (
+            not isinstance(entry["stageSha256"], str) or not SHA_RE.fullmatch(entry["stageSha256"])
+        ):
+            errors.append(f"{label}.stageSha256 inválido")
         if entry.get("mode") not in {"read", "write"}:
             errors.append(f"{label}.mode inválido")
         if not isinstance(entry.get("applicable"), bool):

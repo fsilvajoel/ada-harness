@@ -51,6 +51,7 @@ from script.feature_contract import (
     executor_chain,
     lint_contract,
     load_contract_config,
+    stage_config_sha256,
     sha256_bytes,
     sha256_file,
     worker_timeout,
@@ -421,7 +422,72 @@ class FeatureRunner:
             raise FeatureRunError(EXIT_BLOCKED, f"{relative} ausente no commit {commit_sha[:12]}")
         return completed.stdout
 
-    def verify_contract(self) -> dict[str, object]:
+    def _check_config(
+        self, contract: dict[str, object], config: dict[str, object], state: dict[str, object] | None
+    ) -> None:
+        """Hash por stage: stage passed fica congelada (só avisa); as demais bloqueiam se o recorte delas mudou."""
+        stages = contract["stages"]
+        assert isinstance(stages, list)
+        baseline = self._baseline(contract)
+        if baseline is None:
+            if contract["configSha256"] != sha256_file(self.root / CONFIG_NAME):
+                raise FeatureRunError(EXIT_BLOCKED, f"{CONFIG_NAME} mudou desde a publicação do contrato")
+            self._save_baseline(contract, config)
+            return
+        for entry in stages:
+            assert isinstance(entry, dict)
+            name = str(entry["stage"])
+            if self._stage_hash(config, entry) == baseline.get(name):
+                continue
+            status = self._stage_status(state, name) if state is not None else "pending"
+            if status in {"passed", "skipped"}:
+                print(f"aviso: configuração de {name} mudou depois de {status}; stage congelada, nada refeito",
+                      file=sys.stderr)
+                continue
+            raise FeatureRunError(
+                EXIT_BLOCKED, f"{CONFIG_NAME} mudou no recorte da stage {name} desde a publicação do contrato"
+            )
+
+    def _stage_hash(self, config: dict[str, object], entry: dict[str, object]) -> str:
+        return stage_config_sha256(
+            self.root, config, stage=str(entry["stage"]), role=str(entry["role"]),
+            chain=[str(item) for item in entry["executorChain"]],  # type: ignore[union-attr]
+            gate=str(entry["gate"]),
+            allowed_paths=[str(item) for item in entry["allowedPaths"]],  # type: ignore[union-attr]
+            skills=[str(item) for item in entry["skills"]],  # type: ignore[union-attr]
+        )
+
+    @property
+    def _baseline_path(self) -> Path:
+        return self.run_dir / "stage-hashes.json"
+
+    def _baseline(self, contract: dict[str, object]) -> dict[str, str] | None:
+        stages = contract["stages"]
+        assert isinstance(stages, list)
+        if all(isinstance(e, dict) and isinstance(e.get("stageSha256"), str) for e in stages):
+            return {str(e["stage"]): str(e["stageSha256"]) for e in stages if isinstance(e, dict)}
+        try:
+            data = json.loads(self._baseline_path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            return None
+        if not isinstance(data, dict) or data.get("configSha256") != contract["configSha256"]:
+            return None
+        hashes = data.get("stages")
+        if not isinstance(hashes, dict) or not all(isinstance(v, str) for v in hashes.values()):
+            return None
+        return {str(k): str(v) for k, v in hashes.items()}
+
+    def _save_baseline(self, contract: dict[str, object], config: dict[str, object]) -> None:
+        """Migração de run legado: com o hash global batendo, grava os hashes por stage uma única vez."""
+        stages = contract["stages"]
+        assert isinstance(stages, list)
+        hashes = {str(e["stage"]): self._stage_hash(config, e) for e in stages if isinstance(e, dict)}
+        self._baseline_path.write_text(
+            json.dumps({"configSha256": contract["configSha256"], "stages": hashes}, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+
+    def verify_contract(self, state: dict[str, object] | None = None) -> dict[str, object]:
         """Reverifica tudo antes de cada stage; qualquer divergência bloqueia antes do worker."""
         contract, commit_sha = self._published()
         try:
@@ -431,8 +497,7 @@ class FeatureRunner:
         errors = lint_contract(contract, config)
         if errors:
             raise FeatureRunError(EXIT_BLOCKED, "contrato inválido: " + "; ".join(errors))
-        if contract["configSha256"] != sha256_file(self.root / CONFIG_NAME):
-            raise FeatureRunError(EXIT_BLOCKED, f"{CONFIG_NAME} mudou desde a publicação do contrato")
+        self._check_config(contract, config, state)
         sdd = contract["sdd"]
         assert isinstance(sdd, dict)
         for kind, ref in sdd.items():
@@ -479,7 +544,7 @@ class FeatureRunner:
                 if not self.retry_failed or stage in retried:
                     raise FeatureRunError(EXIT_BLOCKED, f"stage {stage} falhou; use --retry-failed")
                 retried.add(stage)
-            contract = self.verify_contract()
+            contract = self.verify_contract(state)
             stages = contract["stages"]
             assert isinstance(stages, list)
             entry = next(item for item in stages if isinstance(item, dict) and item.get("stage") == stage)
