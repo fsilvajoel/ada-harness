@@ -102,7 +102,11 @@ visual_review:
   timeout_s: 120
 
 # Contrato de feature (onda 5): consumido por script/feature_contract.py e script/run_feature.py.
-# Todas as 7 stages pós-plano são obrigatórias; {feature} é substituído pelo ID da feature.
+# Todas as 7 stages pós-plano precisam estar declaradas; {feature} é substituído pelo ID da feature.
+# `enabled: false` (padrão true) desliga a stage: não exige role/gate/allowedPaths, vira `skipped` no run (evento
+# stage_skipped, motivo "disabled-by-config"). `reactivate_when: <texto>` é só documentação (vai ao contrato e entra no
+# hash da stage). `implement` é o núcleo e não pode ser desligada; stage ligada não pode ter cartão com dependsOn de
+# cartão de stage desligada (erro no lint do contrato).
 # `cards: <kind>` anexa os cartões desse kind (allowedPaths dos cartões entram no escopo da stage).
 # A política de testes do plano decide `applicable` (stage não aplicável é pulada com evento).
 feature_contract:
@@ -116,6 +120,12 @@ feature_contract:
     mutation_e2e: {role: reviewer, gate: verify, allowedPaths: ["docs/plano/{feature}/mutation.md"]}
     finalReview:  {role: reviewer, gate: verify, allowedPaths: ["docs/plano/{feature}/final-review.md"]}
     closing:      {role: closer, gate: verify, allowedPaths: ["docs/plano/{feature}/closing.md"]}
+  # Núcleo mínimo plan -> tests -> implement: troque as 5 linhas acima (exceto tests e implement) por:
+  #   refinement:   {enabled: false, reactivate_when: "feature com requisito ambíguo ou PRD sem critérios de aceite"}
+  #   testReview:   {enabled: false, reactivate_when: "testes escritos por modelo fraco ou regra de domínio crítica"}
+  #   mutation_e2e: {enabled: false, reactivate_when: "lógica de domínio com risco de regressão ou fluxo e2e crítico"}
+  #   finalReview:  {enabled: false, reactivate_when: "mudança em área sensível (segurança, dados) ou antes de release"}
+  #   closing:      {enabled: false, reactivate_when: "quando o fechamento (docs/changelog) for exigido por feature"}
 
 # Gate portable: textos do projeto que não podem aparecer dentro do harness.
 portable:

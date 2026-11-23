@@ -646,3 +646,135 @@ def test_config_change_in_pending_stage_slice_blocks(
     _edit(repo, "role: refiner\n      gate: verify", "role: refiner\n      gate: other")
     with pytest.raises(FeatureRunError, match="stage refinement"):
         _runner(repo).verify_contract(_status())
+
+
+# ---------- stage desligada por config (enabled: false) ----------
+def _disable(repo: Path, stage: str, reactivate: str | None = None) -> None:
+    """Troca a stage no yaml por `enabled: false` (sem role/gate), com `reactivate_when` opcional."""
+    path = repo / "harness.project.yaml"
+    lines = path.read_text(encoding="utf-8").splitlines()
+    start = lines.index(f"    {stage}:")
+    end = start + 1
+    while end < len(lines) and lines[end].startswith("      "):
+        end += 1
+    block = [f"    {stage}:", "      enabled: false", *(ln for ln in lines[start:end] if ln.strip().startswith("cards:"))]
+    if reactivate:
+        block.append(f"      reactivate_when: \"{reactivate}\"")
+    path.write_text("\n".join([*lines[:start], *block, *lines[end:]]) + "\n", encoding="utf-8")
+
+
+def _build(repo: Path, control: Path) -> tuple[dict[str, object], dict[str, object]]:
+    plan_dir = repo / "docs" / "plano" / FEATURE
+    plan_dir.mkdir(parents=True, exist_ok=True)
+    (plan_dir / "plan.json").write_text((control / "plan.json").read_text(encoding="utf-8"), encoding="utf-8")
+    (repo / "docs" / "plano" / f"{FEATURE}.yaml").write_text(CARDS, encoding="utf-8")
+    config = load_config(repo, required=True)
+    contract, _ = build_contract(
+        repo, feature_id=FEATURE, config=config, plan_path=plan_dir / "plan.json",
+        cards_path=repo / "docs" / "plano" / f"{FEATURE}.yaml", request_dir=Path(".harness/requests"),
+    )
+    return contract, config
+
+
+def test_disabled_stage_loads_without_role_and_gate(project: tuple[Path, Path]) -> None:
+    repo, _ = project
+    _disable(repo, "closing", "quando houver release")
+    spec = load_contract_config(load_config(repo, required=True), FEATURE)
+    assert spec.stages["closing"].enabled is False
+    assert spec.stages["closing"].reactivate_when == "quando houver release"
+    assert spec.stages["implement"].enabled is True
+
+
+def test_enabled_must_be_bool_and_reactivate_needs_disabled(project: tuple[Path, Path]) -> None:
+    repo, _ = project
+    config = load_config(repo, required=True)
+    stages = config["feature_contract"]["stages"]  # type: ignore[index]
+    stages["closing"]["enabled"] = "no"
+    with pytest.raises(ContractError, match="enabled precisa ser booleano"):
+        load_contract_config(config, FEATURE)
+    stages["closing"]["enabled"] = True
+    stages["closing"]["reactivate_when"] = "x"
+    with pytest.raises(ContractError, match="reactivate_when só vale"):
+        load_contract_config(config, FEATURE)
+
+
+def test_default_all_enabled_contract_is_unchanged(project: tuple[Path, Path]) -> None:
+    repo, control = project
+    contract, config = _build(repo, control)
+    assert all("enabled" not in e and "reactivateWhen" not in e for e in contract["stages"])  # type: ignore[union-attr]
+    assert [e["applicable"] for e in contract["stages"]] == [True, True, True, True, False, True, True]  # type: ignore[union-attr]
+    assert lint_contract(contract, config) == []
+
+
+def test_disabled_stage_is_not_applicable_and_lints(project: tuple[Path, Path]) -> None:
+    repo, control = project
+    _disable(repo, "closing", "ao publicar")
+    _disable(repo, "testReview")
+    contract, config = _build(repo, control)
+    closing = next(e for e in contract["stages"] if e["stage"] == "closing")  # type: ignore[union-attr]
+    assert closing["applicable"] is False and closing["enabled"] is False
+    assert closing["reactivateWhen"] == "ao publicar" and closing["allowedPaths"] == []
+    assert closing["executorChain"] == [] and closing["maxAttempts"] == 0 and closing["timeoutS"] == 0
+    assert lint_contract(contract, config) == []
+    closing["applicable"] = True
+    assert any("applicable precisa ser false" in e for e in lint_contract(contract, config))
+
+
+def test_reactivate_when_enters_stage_hash_only_for_that_stage(project: tuple[Path, Path]) -> None:
+    repo, control = project
+    _disable(repo, "closing", "a")
+    first, _ = _build(repo, control)
+    _disable(repo, "closing", "b")
+    second, _ = _build(repo, control)
+    hashes = [{e["stage"]: e["stageSha256"] for e in c["stages"]} for c in (first, second)]  # type: ignore[union-attr]
+    assert hashes[0]["closing"] != hashes[1]["closing"]
+    others = [{k: v for k, v in h.items() if k != "closing"} for h in hashes]
+    assert others[0] == others[1]
+
+
+def test_disabling_a_stage_does_not_invalidate_passed_stages(
+    project: tuple[Path, Path], capsys: pytest.CaptureFixture[str]
+) -> None:
+    repo, control = project
+    to_contract(repo, capsys, control)
+    _disable(repo, "tests")
+    runner = _runner(repo)
+    runner.verify_contract(_status(tests="passed"))  # tests já passou: só aviso
+    with pytest.raises(FeatureRunError, match="stage tests"):
+        runner.verify_contract(_status())
+
+
+def test_implement_cannot_be_disabled(project: tuple[Path, Path]) -> None:
+    repo, _ = project
+    _disable(repo, "implement")
+    with pytest.raises(ContractError, match="núcleo do pipeline"):
+        load_contract_config(load_config(repo, required=True), FEATURE)
+
+
+def test_disabled_stage_needed_by_card_chain_is_clear_error(project: tuple[Path, Path]) -> None:
+    repo, control = project
+    _disable(repo, "tests")
+    with pytest.raises(ContractError, match="depende de E1-F01-T01.*stage tests"):
+        _build(repo, control)
+
+
+def test_run_skips_disabled_stages_with_event(
+    project: tuple[Path, Path], capsys: pytest.CaptureFixture[str]
+) -> None:
+    repo, control = project
+    for stage in ("refinement", "testReview", "mutation_e2e", "finalReview", "closing"):
+        _disable(repo, stage)
+    git(repo, "commit", "-qam", "desliga stages")
+    assert run(repo, capsys)[0] == 3
+    approve_drafts(repo)
+    code, summary = run(repo, capsys)
+    assert code == 0, summary
+    assert [line.split()[0] for line in calls(control)] == ["plan", "tests", "implement"]
+    stages = state(repo)["stages"]
+    assert isinstance(stages, dict)
+    for name in ("refinement", "testReview", "mutation_e2e", "finalReview", "closing"):
+        assert stages[name]["status"] == "skipped"
+    events = read_events(repo / ".harness" / "runs" / RUN / FEATURE / "events.jsonl")
+    skipped = [e for e in events if e.get("event") == "stage_skipped"]
+    assert {e.get("stage") for e in skipped} == {"refinement", "testReview", "mutation_e2e", "finalReview", "closing"}
+    assert all("disabled-by-config" in str(e) for e in skipped)

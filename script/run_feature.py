@@ -44,6 +44,7 @@ from script.card_lint import lint_cards_document
 from script.events import EventError, append_event, read_events
 from script.feature_contract import (
     CONTRACT_STAGES,
+    DISABLED_REASON,
     SDD_KINDS,
     ContractError,
     build_contract,
@@ -551,7 +552,8 @@ class FeatureRunner:
             if entry["applicable"] is False:
                 if status != "pending":
                     raise FeatureRunError(EXIT_BLOCKED, f"stage {stage} não aplicável em estado {status}")
-                skip_stage(self.event_path, self.run_id, self.feature_id, stage, "contrato: stage não aplicável")
+                reason = DISABLED_REASON if entry.get("enabled", True) is False else "contrato: stage não aplicável"
+                skip_stage(self.event_path, self.run_id, self.feature_id, stage, reason)
                 continue
             request = entry["request"]
             assert isinstance(request, dict)
