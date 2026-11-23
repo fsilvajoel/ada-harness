@@ -21,7 +21,7 @@ from script.events import read_events
 from script.feature_contract import build_contract, lint_contract, load_contract_config, ContractError
 from script.pipeline import replay
 from script.project_config import load_config
-from script.run_feature import main
+from script.run_feature import FeatureRunError, FeatureRunner, main
 from script.sdd import approve_document
 
 FEATURE = "E1-F01"
@@ -370,7 +370,6 @@ def test_stage_failure_blocks_later_stages_and_resume_does_not_repeat(
 
 @pytest.mark.parametrize("tamper, reason", [
     ("sdd", "SDD prd mudou"),
-    ("config", "harness.project.yaml mudou"),
     ("request", "request de refinement mudou"),
 ])
 def test_hash_changes_block_before_any_worker(
@@ -383,9 +382,6 @@ def test_hash_changes_block_before_any_worker(
     if tamper == "sdd":
         prd = repo / "docs" / "sdd" / FEATURE / "prd.md"
         prd.write_text(prd.read_text(encoding="utf-8") + "\nmudança", encoding="utf-8")
-    elif tamper == "config":
-        config = repo / "harness.project.yaml"
-        config.write_text(config.read_text(encoding="utf-8") + "# comentário\n", encoding="utf-8")
     else:
         request = repo / ".harness" / "runs" / RUN / FEATURE / "requests" / "refinement.md"
         request.write_text(request.read_text(encoding="utf-8") + "\nfaça outra coisa\n", encoding="utf-8")
@@ -551,3 +547,102 @@ def test_build_contract_adds_stub_paths_from_implement_cards(project: tuple[Path
     assert tests_stage["stubPaths"] == ["src/filter.py"]
     assert "src/filter.py" in tests_stage["allowedPaths"]
     assert lint_contract(contract, config) == []
+
+
+# ---------- hash por stage ----------
+def _runner(repo: Path) -> FeatureRunner:
+    return FeatureRunner(repo, RUN, FEATURE, retry_failed=True)
+
+
+def _status(**passed: str) -> dict[str, object]:
+    names = ("refinement", "tests", "testReview", "implement", "mutation_e2e", "finalReview", "closing")
+    return {"stages": {name: {"status": passed.get(name, "pending")} for name in names}}
+
+
+def _edit(repo: Path, old: str, new: str) -> None:
+    config = repo / "harness.project.yaml"
+    text = config.read_text(encoding="utf-8")
+    assert old in text
+    config.write_text(text.replace(old, new, 1), encoding="utf-8")
+
+
+def _with_skill(repo: Path) -> None:
+    skill = repo / "skill" / "foo"
+    skill.mkdir(parents=True)
+    (skill / "SKILL.md").write_text("---\nname: foo\ndescription: x\n---\nv1\n", encoding="utf-8")
+    config = repo / "harness.project.yaml"
+    config.write_text(config.read_text(encoding="utf-8") + "skill_dir: skill\nrole_skills:\n  test-author: [foo]\n",
+                      encoding="utf-8")
+    git(repo, "add", ".")
+    git(repo, "commit", "-m", "skill")
+
+
+def test_comment_and_unused_worker_do_not_invalidate(
+    project: tuple[Path, Path], capsys: pytest.CaptureFixture[str]
+) -> None:
+    repo, control = project
+    to_contract(repo, capsys, control)
+    config = repo / "harness.project.yaml"
+    config.write_text("# comentário\n" + config.read_text(encoding="utf-8"), encoding="utf-8")
+    _edit(repo, "  fake2:\n    adapter: cli-agent", "  fake3:\n    adapter: cli-agent\n    command: x\n  fake2:\n    adapter: cli-agent")
+    _edit(repo, "  closer: {agent: closer.md, worker: fake}", "  closer: {agent: closer.md, worker: fake}\n  unused: {agent: u.md, worker: fake}")
+    _runner(repo).verify_contract(_status())
+
+
+def test_implement_gate_change_does_not_invalidate_passed_tests(
+    project: tuple[Path, Path], capsys: pytest.CaptureFixture[str]
+) -> None:
+    repo, control = project
+    to_contract(repo, capsys, control)
+    _edit(repo, "commands:\n", "commands:\n  verify2: echo ok\n")
+    _edit(repo, "role: implementer\n      gate: verify", "role: implementer\n      gate: verify2")
+    runner = _runner(repo)
+    with pytest.raises(FeatureRunError, match="stage implement"):  # só a implement é invalidada, tests não
+        runner.verify_contract(_status(refinement="passed", tests="passed", testReview="passed"))
+    runner.verify_contract(_status(refinement="passed", tests="passed", testReview="passed", implement="passed"))
+
+
+def test_tests_skill_change_invalidates_tests_unless_passed(
+    project: tuple[Path, Path], capsys: pytest.CaptureFixture[str]
+) -> None:
+    repo, control = project
+    _with_skill(repo)
+    to_contract(repo, capsys, control)
+    (repo / "skill" / "foo" / "SKILL.md").write_text("---\nname: foo\ndescription: x\n---\nv2\n", encoding="utf-8")
+    runner = _runner(repo)
+    with pytest.raises(FeatureRunError, match="stage tests"):
+        runner.verify_contract(_status(refinement="passed"))
+    runner.verify_contract(_status(refinement="passed", tests="passed", testReview="passed", implement="skipped"))
+    # stage passed fica congelada: só aviso
+    assert "configuração de tests mudou" in capsys.readouterr().err
+
+
+def test_legacy_contract_with_global_hash_opens_and_migrates(
+    project: tuple[Path, Path], capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    repo, control = project
+    to_contract(repo, capsys, control)
+    runner = _runner(repo)
+    contract, commit = runner._published()
+    legacy = copy.deepcopy(contract)
+    for entry in legacy["stages"]:  # type: ignore[union-attr]
+        del entry["stageSha256"]  # type: ignore[index]
+    monkeypatch.setattr(runner, "_published", lambda: (legacy, commit))
+    runner.verify_contract(_status())  # hash global bate: migra
+    assert (repo / ".harness" / "runs" / RUN / FEATURE / "stage-hashes.json").is_file()
+    config = repo / "harness.project.yaml"
+    config.write_text("# comentário\n" + config.read_text(encoding="utf-8"), encoding="utf-8")
+    runner.verify_contract(_status())  # após migrar, comentário não bloqueia
+    (repo / ".harness" / "runs" / RUN / FEATURE / "stage-hashes.json").unlink()
+    with pytest.raises(FeatureRunError, match="mudou desde a publicação"):
+        runner.verify_contract(_status())  # sem baseline: comportamento atual
+
+
+def test_config_change_in_pending_stage_slice_blocks(
+    project: tuple[Path, Path], capsys: pytest.CaptureFixture[str]
+) -> None:
+    repo, control = project
+    to_contract(repo, capsys, control)
+    _edit(repo, "role: refiner\n      gate: verify", "role: refiner\n      gate: other")
+    with pytest.raises(FeatureRunError, match="stage refinement"):
+        _runner(repo).verify_contract(_status())
