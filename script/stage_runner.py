@@ -549,6 +549,15 @@ def run_command(command: list[str], *, cwd: Path, timeout_s: int) -> CommandResu
     return CommandResult(result.returncode, result.stdout + result.stderr)
 
 
+def install_dependencies(worktree: Path, install_command: list[str]) -> None:
+    """Roda commands.install (opcional) na worktree recém-criada, para o worker e o gate já acharem as dependências."""
+    if not install_command:
+        return
+    result = run_command(install_command, cwd=worktree, timeout_s=900)
+    if result.exit_code != 0:
+        raise StageRunnerError(f"commands.install falhou: {result.output.strip()[-500:]}")
+
+
 _ANSI_RE = re.compile(r"\x1b\[[0-9;]*m")
 FEEDBACK_LIMIT = 3000
 
@@ -641,8 +650,11 @@ def run_configured_stage(
     events = read_events(event_path)
     base_sha = latest_commit_sha(events, run_id, feature_id) or worktree_preflight(root)["base_sha"]
 
+    install_command = shlex.split(commands["install"]) if isinstance(commands.get("install"), str) else []
+
     def make_worktree(attempt: int) -> Path:
         path, _ = create_attempt_worktree(root, run_id, feature_id, stage, attempt, base_sha)
+        install_dependencies(path, install_command)
         return path
 
     def run_worker(executor: str, worktree: Path) -> CommandResult:
