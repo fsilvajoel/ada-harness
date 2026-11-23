@@ -27,6 +27,7 @@ from script.pipeline import (
     skip_stage,
     start_stage,
 )
+from script.pregate import PREGATE_FAILURE, PregateConfigError, parse_pregate, run_pregate as run_pregate_commands
 from script.project_config import get_str, load_config
 from script.worktree import (
     WorktreeError,
@@ -90,6 +91,7 @@ class StageResult:
 
 Worker = Callable[[str, Path], CommandResult]
 Gate = Callable[[Path], CommandResult]
+PregateRunner = Callable[[Path], CommandResult]
 Preflight = Callable[[Path], list[str]]
 Worktree = Callable[[int], Path]
 CleanupWorktree = Callable[[Path], None]
@@ -224,6 +226,7 @@ def run_stage(
     cleanup_attempt: CleanupWorktree | None = None,
     commit_success: CommitWorktree | None = None,
     record_attempt: RecordAttempt | None = None,
+    run_pregate: PregateRunner | None = None,
 ) -> StageResult:
     if stage not in STAGES:
         raise ValueError(f"stage inválida: {stage}")
@@ -363,7 +366,31 @@ def run_stage(
         )
         failure: str | None = None
         gate_result: CommandResult | None = None
-        if worker_result.exit_code != 0:
+        if worker_result.exit_code == 0 and not worker_result.failure_type and run_pregate is not None:
+            pregate_result = run_pregate(worktree)
+            if not isinstance(pregate_result, CommandResult):
+                raise TypeError("run_pregate precisa retornar CommandResult")
+            pregate_manifest = _save_evidence(
+                evidence_root / stage,
+                gate="pregate",
+                result=pregate_result,
+                command=["pregate", feature_id],
+                attempt=attempt,
+            )
+            if pregate_result.exit_code != 0:
+                append_event(event_path, {
+                    "event": "pregate-fail",
+                    "run_id": run_id,
+                    "feature_id": feature_id,
+                    "stage": stage,
+                    "executor": executor,
+                    "attempt": attempt,
+                    "output": pregate_manifest["output"],
+                })
+                failure = PREGATE_FAILURE
+        if failure is not None:
+            pass
+        elif worker_result.exit_code != 0:
             failure = worker_result.failure_type or "worker-error"
         elif worker_result.failure_type:
             failure = worker_result.failure_type
@@ -442,17 +469,17 @@ def run_stage(
             feature_id,
             stage,
             passed=False,
-            gate=gate_name if gate_result is not None else None,
+            gate="pregate" if failure == PREGATE_FAILURE else (gate_name if gate_result is not None else None),
             reason=failure,
             executor=executor,
             attempt=attempt,
         )
         if cleanup_attempt is not None:
             cleanup_attempt(worktree)
-        if failure not in FALLBACK_ERRORS:
+        if failure != PREGATE_FAILURE and failure not in FALLBACK_ERRORS:
             return StageResult(False, executor, attempt, failure, failure)
         previous_executor = executor
-        previous_failure = failure
+        previous_failure = "gate-fail" if failure == PREGATE_FAILURE else failure
 
     return StageResult(
         False,
@@ -592,7 +619,7 @@ def _request_with_feedback(
         for event in events
         if event.get("run_id") == run_id and event.get("feature_id") == feature_id
         and event.get("stage") == stage and event.get("event") == "stage_failed"
-        and str(event.get("reason", "")).startswith(("commit-error", "gate"))
+        and str(event.get("reason", "")).startswith(("commit-error", "gate", "pregate"))
     ]
     if not failed:
         return request.resolve()
@@ -648,7 +675,7 @@ def repair_patch_for(
         return None
     last = failed[-1]
     attempt = last.get("attempt")
-    if not str(last.get("reason", "")).startswith(("commit-error", "gate")) or not isinstance(attempt, int):
+    if not str(last.get("reason", "")).startswith(("commit-error", "gate", "pregate")) or not isinstance(attempt, int):
         return None
     patch = evidence_dir / str(attempt) / REPAIR_PATCH
     return patch if patch.is_file() else None
@@ -798,6 +825,15 @@ def run_configured_stage(
         failure = "configuration" if result.exit_code in {2, 8} else "invalid-result"
         return CommandResult(result.exit_code, result.output, failure_type=failure)
 
+    try:
+        pregate_commands = parse_pregate(config, stage)
+    except PregateConfigError as exc:
+        raise StageRunnerError(str(exc)) from exc
+
+    def run_pregate_stage(worktree: Path) -> CommandResult:
+        outcome = run_pregate_commands(pregate_commands, worktree)
+        return CommandResult(outcome.exit_code, outcome.output)
+
     def run_gate(worktree: Path) -> CommandResult:
         gate_config = _config_map(config, "gates", gate_name)
         timeout_s = gate_config.get("command_timeout_s", 600)
@@ -927,6 +963,7 @@ def run_configured_stage(
             new_only_paths=stub_paths,
         ),
         record_attempt=record_attempt,
+        run_pregate=run_pregate_stage if pregate_commands else None,
     )
 
 

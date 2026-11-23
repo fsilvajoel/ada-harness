@@ -130,3 +130,16 @@ checks:
 # em vez do base_sha limpo. allowedPaths e stubs continuam validados no commit. Desligada: comportamento atual.
 # retry:
 #   repair_from_previous: true
+
+# Pré-gate local (opcional, por stage; `enabled` padrão false). Roda SEM LLM na worktree da tentativa, depois do worker e
+# ANTES do commit e do gate. `{files}` vira os arquivos alterados da tentativa (um argumento por arquivo); sem arquivos,
+# o comando com {files} é pulado. Falha (exit != 0, timeout, comando ausente) gera o evento `pregate-fail`, log em
+# evidence/<stage>/<n>/pregate.log, e conta como tentativa normal (maxAttempts); o retry leva a cauda do log.
+# Exemplo (troque pelos comandos do seu projeto):
+# pregate:
+#   implementation:
+#     enabled: true
+#     commands:
+#       - {run: "<linter> {files}", timeout_s: 120}
+#       - {run: "<formatador> --check {files}", timeout_s: 60}
+#       - "<checagem de esquema do projeto>"
