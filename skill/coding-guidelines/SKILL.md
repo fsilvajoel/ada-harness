@@ -33,7 +33,7 @@ Before implementing:
 - No error handling for impossible scenarios.
 - If you write 200 lines and it could be 50, rewrite it.
 - Don't read `process.env.X` unless the task requires a new setting: the env gate fails any variable missing from `.env.example` (e.g. `NODE_ENV`). Follow the spec literally (e.g. always set `Secure`) instead of branching on the environment.
-- Zod schemas: reuse the shared primitives instead of `z.string()`/`z.number().int()` for ids, cents, dates and instants (`idSchema`, `centsSchema`/`positiveCentsSchema`/`signedCentsSchema`, `isoDateSchema`, `instantSchema` from `common.ts`; the schemas gate S3 fails otherwise). Export only the names the tests import: any extra export ending in `Request`/`Response`/`Query` needs a case in `api/api.test.ts`, a file you cannot edit (gate S4).
+- Zod schemas: reuse the shared primitives instead of `z.string()`/`z.number().int()` for ids, cents, dates and instants (`idSchema`, `centsSchema`/`positiveCentsSchema`/`signedCentsSchema`, `isoDateSchema`, `instantSchema` from `common.ts`; the schemas gate S3 fails otherwise). Export only the names the tests import: any extra export ending in `Request`/`Response`/`Query` needs a case in `api/api.test.ts`, a file you cannot edit (gate S4; the test-writer adds that case, so never add such exports yourself). No regex literals or `new RegExp` outside `common.ts`: use its primitives (gate S2).
 
 Ask yourself: "Would a senior engineer say this is overcomplicated?" If yes, simplify.
 

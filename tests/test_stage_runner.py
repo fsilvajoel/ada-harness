@@ -391,3 +391,18 @@ def test_retry_request_carries_previous_commit_failure(tmp_path: Path) -> None:
     assert text.startswith("# pedido\n")
     assert "Q1 toBeDefined() sempre passa" in text and "\x1b" not in text
     assert request.read_text(encoding="utf-8") == "# pedido\n"
+
+
+def test_install_dependencies_runs_in_worktree(tmp_path: Path) -> None:
+    from script.stage_runner import install_dependencies
+
+    install_dependencies(tmp_path, [])
+    install_dependencies(tmp_path, ["sh", "-c", "touch installed"])
+    assert (tmp_path / "installed").is_file()
+
+
+def test_install_dependencies_failure_raises(tmp_path: Path) -> None:
+    from script.stage_runner import StageRunnerError, install_dependencies
+
+    with pytest.raises(StageRunnerError, match="commands.install falhou"):
+        install_dependencies(tmp_path, ["sh", "-c", "echo boom; exit 3"])

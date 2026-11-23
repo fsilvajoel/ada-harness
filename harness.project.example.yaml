@@ -79,6 +79,7 @@ commands:
   format-write: <formatador in-place, opcional, ex. prettier --write>
   lint-fix: <opcional, roda antes do format-write, ex. eslint --fix>
   verify: <verificação completa>
+  install: <opcional, roda ao criar cada worktree de tentativa, ex. pnpm install --frozen-lockfile --offline>
 
 # Ferramentas e limites dos gates mutacao e e2e (gate/mutacao.md, gate/e2e.md). Mapas inline.
 gates:
