@@ -38,7 +38,10 @@ STAGE_FIELDS: Final[frozenset[str]] = frozenset({
     "stage", "role", "executorChain", "maxAttempts", "request", "gate", "timeoutS", "allowedPaths", "skills",
     "mode", "cards", "applicable",
 })
-OPTIONAL_STAGE_FIELDS: Final[frozenset[str]] = frozenset({"stubPaths", "stageSha256"})
+OPTIONAL_STAGE_FIELDS: Final[frozenset[str]] = frozenset({"stubPaths", "stageSha256", "enabled", "reactivateWhen"})
+CORE_STAGE: Final[str] = "implement"
+DISABLED_REASON: Final[str] = "disabled-by-config"
+DISABLED_PLACEHOLDER: Final[str] = "-"
 DEFAULT_WORKER_TIMEOUT_S: Final[int] = 1800
 
 type Contract = dict[str, object]
@@ -57,6 +60,8 @@ class StageSpec:
     skills: tuple[str, ...]
     card_kind: str | None
     stubs_from: str | None = None
+    enabled: bool = True
+    reactivate_when: str | None = None
 
 
 @dataclass(frozen=True)
@@ -117,7 +122,18 @@ def load_contract_config(config: dict[str, object], feature_id: str) -> Contract
         label = f"feature_contract.stages.{stage}"
         if not isinstance(entry, dict):
             raise ContractError(f"{label} ausente")
+        enabled = entry.get("enabled", True)
+        if type(enabled) is not bool:
+            raise ContractError(f"{label}.enabled precisa ser booleano")
+        reactivate = entry.get("reactivate_when")
+        if reactivate is not None and (not isinstance(reactivate, str) or not reactivate.strip()):
+            raise ContractError(f"{label}.reactivate_when precisa ser texto não vazio")
+        if reactivate is not None and enabled:
+            raise ContractError(f"{label}.reactivate_when só vale com enabled: false")
         role, gate, mode = entry.get("role"), entry.get("gate"), entry.get("mode", "write")
+        if not enabled:
+            role = role if isinstance(role, str) and role.strip() else DISABLED_PLACEHOLDER
+            gate = gate if isinstance(gate, str) and gate.strip() else DISABLED_PLACEHOLDER
         if not isinstance(role, str) or not role.strip():
             raise ContractError(f"{label}.role ausente")
         if not isinstance(gate, str) or not gate.strip():
@@ -142,6 +158,13 @@ def load_contract_config(config: dict[str, object], feature_id: str) -> Contract
             skills=_str_list(entry.get("skills"), f"{label}.skills"),
             card_kind=card_kind if isinstance(card_kind, str) else None,
             stubs_from=stubs_from if isinstance(stubs_from, str) else None,
+            enabled=enabled,
+            reactivate_when=reactivate.strip() if isinstance(reactivate, str) else None,
+        )
+    core = stages[CORE_STAGE]
+    if not core.enabled:
+        raise ContractError(
+            f"feature_contract.stages.{CORE_STAGE}.enabled: {CORE_STAGE} é o núcleo do pipeline e não pode ser desligada"
         )
     return ContractConfig(sdd_dir=str(sdd_dir), planner_role=planner_role, stages=stages)
 
@@ -356,7 +379,7 @@ def build_contract(
     requests: dict[str, str] = {}
     for stage in CONTRACT_STAGES:
         stage_spec = spec.stages[stage]
-        chain = executor_chain(config, stage_spec.role)
+        chain = executor_chain(config, stage_spec.role) if stage_spec.enabled else []
         stage_cards = [card for card in ordered if stage_spec.card_kind and card.get("kind") == stage_spec.card_kind]
         allowed = _union([list(stage_spec.allowed_paths), *(_card_list(card, "allowedPaths") for card in stage_cards)])
         skills = _union([list(stage_spec.skills), *(_card_list(card, "skills") for card in stage_cards)])
@@ -390,17 +413,19 @@ def build_contract(
             "maxAttempts": len(chain),
             "request": {"path": request_path, "sha256": sha256_bytes(content.encode("utf-8"))},
             "gate": stage_spec.gate,
-            "timeoutS": worker_timeout(config, chain[0]),
+            "timeoutS": worker_timeout(config, chain[0]) if chain else 0,
             "allowedPaths": allowed,
             "skills": skills,
             "mode": stage_spec.mode,
             "cards": card_ids,
-            "applicable": policy.get(stage, True),
+            "applicable": stage_spec.enabled and policy.get(stage, True),
             "stageSha256": stage_config_sha256(
                 root, config, stage=stage, role=stage_spec.role, chain=chain, gate=stage_spec.gate,
                 allowed_paths=allowed, skills=skills,
             ),
             **({"stubPaths": stub_paths} if stub_paths else {}),
+            **({"enabled": False} if not stage_spec.enabled else {}),
+            **({"reactivateWhen": stage_spec.reactivate_when} if stage_spec.reactivate_when else {}),
         })
     contract: Contract = {
         "schemaVersion": CONTRACT_VERSION,
@@ -535,14 +560,31 @@ def lint_contract(contract: object, config: dict[str, object]) -> list[str]:
             continue
         role = entry.get("role")
         chain = entry.get("executorChain")
-        try:
-            expected_chain = executor_chain(config, str(role))
-        except ContractError as exc:
-            errors.append(f"{label}: {exc}")
-            expected_chain = None
+        enabled = entry.get("enabled", True)
+        if type(enabled) is not bool:
+            errors.append(f"{label}.enabled precisa ser boolean")
+            enabled = True
+        if "reactivateWhen" in entry and (
+            enabled or not isinstance(entry["reactivateWhen"], str) or not entry["reactivateWhen"].strip()
+        ):
+            errors.append(f"{label}.reactivateWhen: texto não vazio, só com enabled: false")
+        if not enabled:
+            if entry.get("applicable") is not False:
+                errors.append(f"{label}.applicable precisa ser false em stage desligada")
+            if entry.get("stage") == CORE_STAGE:
+                errors.append(f"{label}: {CORE_STAGE} é o núcleo do pipeline e não pode ser desligada")
+        expected_chain: list[str] | None = None
+        if enabled:
+            try:
+                expected_chain = executor_chain(config, str(role))
+            except ContractError as exc:
+                errors.append(f"{label}: {exc}")
         if expected_chain is not None and chain != expected_chain:
             errors.append(f"{label}.executorChain diverge de roles.{role} ({expected_chain})")
-        if not isinstance(chain, list) or not chain:
+        if not enabled:
+            if chain != [] or entry.get("maxAttempts") != 0 or entry.get("timeoutS") != 0:
+                errors.append(f"{label}: stage desligada precisa ter executorChain vazio, maxAttempts 0 e timeoutS 0")
+        elif not isinstance(chain, list) or not chain:
             errors.append(f"{label}.executorChain vazio")
         else:
             if entry.get("maxAttempts") != len(chain):
@@ -556,7 +598,7 @@ def lint_contract(contract: object, config: dict[str, object]) -> list[str]:
             except ContractError as exc:
                 errors.append(f"{label}: {exc}")
         gate = entry.get("gate")
-        if not isinstance(gate, str) or not isinstance(commands.get(gate), str):
+        if enabled and (not isinstance(gate, str) or not isinstance(commands.get(gate), str)):
             errors.append(f"{label}: commands.{gate} não configurado")
         errors.extend(_ref_errors(entry.get("request"), f"{label}.request"))
         allowed = entry.get("allowedPaths")
@@ -568,7 +610,7 @@ def lint_contract(contract: object, config: dict[str, object]) -> list[str]:
             errors.append(f"{label}.stubPaths: caminho inseguro ou fora de allowedPaths")
         if not isinstance(allowed, list) or any(not safe_relative(path) for path in allowed):
             errors.append(f"{label}.allowedPaths: caminho inseguro")
-        elif entry.get("applicable") is True and not allowed:
+        elif entry.get("applicable") is True and enabled and not allowed:
             errors.append(f"{label}.allowedPaths: vazio em stage aplicável")
         skills = entry.get("skills")
         if not isinstance(skills, list) or any(not isinstance(skill, str) or not skill for skill in skills):
@@ -588,4 +630,35 @@ def lint_contract(contract: object, config: dict[str, object]) -> list[str]:
             unknown_cards = [str(card) for card in cards if card not in known_cards]
             if unknown_cards:
                 errors.append(f"{label}.cards: cartão desconhecido {', '.join(unknown_cards)}")
+    errors.extend(_disabled_dependency_errors(stages, card_order))
+    return errors
+
+
+def _disabled_dependency_errors(stages: list[object], card_order: object) -> list[str]:
+    """Stage ligada não pode depender (dependsOn) de cartão cuja stage está desligada: a saída não existiria."""
+    if not isinstance(card_order, list):
+        return []
+    owner: dict[str, str] = {}
+    disabled: set[str] = set()
+    for entry in stages:
+        if not isinstance(entry, dict) or not isinstance(entry.get("cards"), list):
+            continue
+        name = str(entry.get("stage"))
+        if entry.get("enabled", True) is False:
+            disabled.add(name)
+        for card in entry["cards"]:
+            owner[str(card)] = name
+    errors: list[str] = []
+    for card in card_order:
+        if not isinstance(card, dict) or not isinstance(card.get("dependsOn"), list):
+            continue
+        stage = owner.get(str(card.get("id")))
+        if stage is None or stage in disabled:
+            continue
+        for dep in card["dependsOn"]:
+            if owner.get(str(dep)) in disabled:
+                errors.append(
+                    f"stages.{stage}: cartão {card.get('id')} depende de {dep}, da stage {owner[str(dep)]} "
+                    "desligada (enabled: false); reative a stage ou remova a dependência"
+                )
     return errors
