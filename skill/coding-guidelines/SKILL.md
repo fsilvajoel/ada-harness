@@ -32,6 +32,7 @@ Before implementing:
 - No "flexibility" or "configurability" that wasn't requested.
 - No error handling for impossible scenarios.
 - If you write 200 lines and it could be 50, rewrite it.
+- Don't read `process.env.X` unless the task requires a new setting: the env gate fails any variable missing from `.env.example` (e.g. `NODE_ENV`). Follow the spec literally (e.g. always set `Secure`) instead of branching on the environment.
 
 Ask yourself: "Would a senior engineer say this is overcomplicated?" If yes, simplify.
 
